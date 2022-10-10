@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "itmo_requestor"
+version = "0.0.1"
+description = ""
+authors = ["Emiliy Feldman", "Maksim Lukin"]
+maintainers = ["Emiliy Feldman", "Maksim Lukin"]
+readme = "README.md"
+packages = [
+    { include = "requestor" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+sqlalchemy = "^1.4.17"
+psycopg2-binary = "^2.8.6"
+pydantic = "^1.8.2"
+orjson = "^3.5.3"
+alembic = "^1.6.5"
+aiohttp = "^3.7.4"
+asyncpg = "^0.23.0"
+
+[tool.poetry.dev-dependencies]
+black = "22.3.0"
+isort = "5.10.1"
+pylint = "2.6.0"
+mypy = "0.931"
+flake8 = "4.0.1"
+bandit = "1.7.4"
+pytest = "7.1.2"
+radon = "5.1.0"
+coverage = "6.4.2"
+autopep8 = "1.6.0"
+codespell = "2.1.0"
+pytest-subtests = "0.8.0"
+pep8-naming = "0.12.1"
+pytest-cov = "2.12.1"
+pytest-httpserver = "^1.0.0"
+pytest-asyncio = "^0.15.1"
+
+[tool.black]
+line-length = 79
+target-version = ["py37", "py38"]
+
+[build-system]
+requires = ["poetry>=1.0.5"]
+build-backend = "poetry.masonry.api"
