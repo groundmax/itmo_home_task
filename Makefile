@@ -15,7 +15,7 @@ IMAGE_NAME := ${PROJECT}
 
 # Installation
 
-reports:
+.reports:
 	@mkdir ${REPORTS}
 
 .venv:
@@ -23,7 +23,7 @@ reports:
 	poetry install --no-root
 	@echo "[Installed]"
 
-install: .venv reports
+install: .venv .reports
 
 # Linters
 
@@ -37,7 +37,7 @@ install: .venv reports
 	@black --check --diff ${PROJECT} ${TESTS} ${MIGRATIONS}
 	@echo "[Black checks finished]"
 
-.pylint: reports
+.pylint: .reports
 	@echo "Running pylint checks..."
 	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS}
 	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS} > ${REPORTS}/pylint.txt
@@ -88,7 +88,7 @@ install: .venv reports
 	@echo "Running pytest checks...\t"
 	@PYTHONPATH=. pytest ${TESTS} --cov=${PROJECT} --cov-report=xml
 
-coverage: .venv reports
+coverage: .venv .reports
 	@echo "Running coverage..."
 	coverage run --source ${PROJECT} --module pytest
 	coverage report
