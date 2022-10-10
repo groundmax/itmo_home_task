@@ -1,0 +1,8 @@
+*
+!migrations
+!requestor
+!alembic.ini
+!main.py
+!poetry.lock
+!pyproject.toml
+!README.md
