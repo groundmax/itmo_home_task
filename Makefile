@@ -8,7 +8,7 @@ export PATH := ${VENV}/bin:${PATH}
 
 MIGRATIONS := migrations
 TESTS := tests
-REPORTS=reports
+REPORTS := .reports
 
 IMAGE_NAME := ${PROJECT}
 
@@ -127,6 +127,3 @@ clean:
 	@find . -type d -name '*pytest_cache*' -exec rm -rf {} +
 
 reinstall: clean install
-
-
-.DEFAULT_GOAL = all
