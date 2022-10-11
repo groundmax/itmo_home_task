@@ -58,21 +58,3 @@ def make_db_team(
         created_at=created_at,
         updated_at=updated_at,
     )
-
-
-# T = tp.TypeVar("T", bound=Base)
-#
-#
-# def make_db_model_from_pydantic_model(
-#     db_model_type: tp.Type[T],
-#     pydantic_model: BaseModel,
-# ) -> T:
-#     values = pydantic_model.dict()
-#
-#     for field in pydantic_model.schema()["properties"].keys():
-#         db_val = getattr(db_model, field)
-#         pydantic_val = getattr(pydantic_model, field)
-#         if isinstance(pydantic_val, UUID):
-#             pydantic_val = str(pydantic_val)
-#         assert db_val == pydantic_val
-#
