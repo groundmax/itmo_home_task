@@ -71,11 +71,6 @@ install: .venv .reports
 	@isort ${PROJECT} ${TESTS} ${MIGRATIONS}
 	@echo "[Isort fixed]"
 
-.autopep8_fix:
-	@echo "Formatting with autopep8..."
-	@autopep8 --in-place -r ${PROJECT} ${TESTS} ${MIGRATIONS}
-	@echo "[Autopep8 fixed]"
-
 .black_fix:
 	@echo "Formatting with black..."
 	@black -q  ${PROJECT} ${TESTS} ${MIGRATIONS}
@@ -106,7 +101,7 @@ build: .build
 
 # Generalization
 
-.format: .isort_fix .autopep8_fix .black_fix
+.format: .isort_fix .black_fix
 format: .venv .format
 
 .lint: .isort .black .flake8 .codespell .mypy .pylint .bandit
