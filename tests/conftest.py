@@ -71,7 +71,9 @@ def db_session(db_bind: sa.engine.Engine) -> tp.Iterator[orm.Session]:
 
 @pytest.mark.asyncio
 @pytest.fixture
-async def db_service(db_session: orm.Session, service_config: ServiceConfig) -> tp.Iterator[DBService]:
+async def db_service(
+    db_session: orm.Session, service_config: ServiceConfig
+) -> tp.Iterator[DBService]:
     service = make_db_service(service_config)
     await service.setup()
     try:

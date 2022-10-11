@@ -1,5 +1,6 @@
-from asyncpg import UniqueViolationError
 import re
+
+from asyncpg import UniqueViolationError
 
 
 class DuplicatedTeamError(Exception):

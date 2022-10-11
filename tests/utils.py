@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 import typing as tp
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel
@@ -10,7 +10,6 @@ DBObjectCreator = tp.Callable[[Base], None]
 
 
 class ApproxDatetime:
-
     def __init__(
         self,
         expected: datetime,
@@ -61,7 +60,6 @@ def make_db_team(
     )
 
 
-
 # T = tp.TypeVar("T", bound=Base)
 #
 #
@@ -78,5 +76,3 @@ def make_db_team(
 #             pydantic_val = str(pydantic_val)
 #         assert db_val == pydantic_val
 #
-
-

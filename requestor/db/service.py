@@ -1,10 +1,11 @@
-from uuid import UUID
 import typing as tp
+from uuid import UUID
+
 from asyncpg import Pool, UniqueViolationError
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
-from requestor.models import TeamInfo, Team
+from requestor.models import Team, TeamInfo
 from requestor.utils import utc_now
 
 from .exceptions import DuplicatedTeamError, TeamNotFoundError
