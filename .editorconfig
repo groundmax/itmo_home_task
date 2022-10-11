@@ -11,7 +11,7 @@ max_line_length = 99
 tab_width = 4
 
 [*.py]
-max_line_length = 79
+max_line_length = 99
 
 [{*.yml, *.yaml, *.json, *.xml}]
 indent_size = 2
