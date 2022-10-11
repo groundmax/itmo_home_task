@@ -2,7 +2,7 @@ from sqlalchemy import Column
 from sqlalchemy.dialects import postgresql as pg
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 
-from requestor.utils import make_uuid, utc_now
+from requestor.utils import make_uuid
 
 Base: DeclarativeMeta = declarative_base()
 

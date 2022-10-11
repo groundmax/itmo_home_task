@@ -1,5 +1,5 @@
-from copy import deepcopy
-from uuid import UUID, uuid4
+# pylint: disable=attribute-defined-outside-init
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import orm
@@ -7,7 +7,7 @@ from sqlalchemy import orm
 from requestor.db.exceptions import DuplicatedTeamError, TeamNotFoundError
 from requestor.db.models import TeamsTable
 from requestor.db.service import DBService
-from requestor.models import Team, TeamInfo
+from requestor.models import TeamInfo
 from requestor.utils import utc_now
 from tests.utils import (
     ApproxDatetime,

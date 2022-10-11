@@ -9,7 +9,8 @@ from sqlalchemy import create_engine, pool
 CURRENT_DIR = Path(__file__).parent
 ROOT_DIR = CURRENT_DIR.parent
 sys.path.append(str(ROOT_DIR.absolute()))
-from requestor.db.models import Base
+
+from requestor.db.models import Base  # noqa: E402; pylint: disable=wrong-import-position
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,3 +1,4 @@
+# pylint: disable=redefined-outer-name
 import os
 import typing as tp
 from contextlib import contextmanager
@@ -42,7 +43,7 @@ def sqlalchemy_session_context(
 
 @contextmanager
 def migrations_context(alembic_ini: Path) -> tp.Iterator[None]:
-    cfg = alembic_config.Config(alembic_ini)
+    cfg = alembic_config.Config(str(alembic_ini))
 
     alembic_command.upgrade(cfg, "head")
     try:
@@ -73,7 +74,7 @@ def db_session(db_bind: sa.engine.Engine) -> tp.Iterator[orm.Session]:
 @pytest.fixture
 async def db_service(
     db_session: orm.Session, service_config: ServiceConfig
-) -> tp.Iterator[DBService]:
+) -> tp.AsyncGenerator[DBService, None]:
     service = make_db_service(service_config)
     await service.setup()
     try:
