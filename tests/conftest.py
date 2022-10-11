@@ -13,9 +13,7 @@ from requestor.db.models import Base
 from requestor.db.service import DBService
 from requestor.services import make_db_service
 from requestor.settings import ServiceConfig, get_config
-from tests.helpers import (
-    DBObjectCreator,
-)
+from tests.utils import DBObjectCreator
 
 CURRENT_DIR = Path(__file__).parent
 ALEMBIC_INI_PATH = CURRENT_DIR.parent / "alembic.ini"
@@ -73,7 +71,7 @@ def db_session(db_bind: sa.engine.Engine) -> tp.Iterator[orm.Session]:
 
 @pytest.mark.asyncio
 @pytest.fixture
-async def db_service(service_config: ServiceConfig) -> tp.Iterator[DBService]:
+async def db_service(db_session: orm.Session, service_config: ServiceConfig) -> tp.Iterator[DBService]:
     service = make_db_service(service_config)
     await service.setup()
     try:
