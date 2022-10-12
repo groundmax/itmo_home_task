@@ -1,14 +1,14 @@
 import typing as tp
 from uuid import UUID
 
-from asyncpg import Pool, UniqueViolationError
+from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
-from requestor.models import Team, TeamInfo
+from requestor.models import Model, ModelInfo, Team, TeamInfo
 from requestor.utils import utc_now
 
-from .exceptions import DuplicatedTeamError, TeamNotFoundError
+from .exceptions import DuplicatedModelError, DuplicatedTeamError, TeamNotFoundError
 
 
 class DBService(BaseModel):
@@ -109,6 +109,47 @@ class DBService(BaseModel):
         record = await self.pool.fetchrow(query, chat_id)
         res = Team(**record) if record is not None else None
         return res
+
+    async def add_model(self, model_info: ModelInfo) -> Model:
+        query = """
+            INSERT INTO models
+                (team_id, name, description, created_at)
+            VALUES
+                (
+                    $1::UUID
+                    , $2::VARCHAR
+                    , $3::VARCHAR
+                    , $4::TIMESTAMP
+                )
+            RETURNING
+                model_id
+                , team_id
+                , name
+                , description
+                , created_at
+        """
+        try:
+            record = await self.pool.fetchrow(
+                query,
+                model_info.team_id,
+                model_info.name,
+                model_info.description,
+                utc_now(),
+            )
+            return Model(**record)
+        except UniqueViolationError as e:
+            raise DuplicatedModelError(e)
+        except ForeignKeyViolationError:
+            raise TeamNotFoundError()
+
+    async def get_team_models(self, team_id: UUID) -> tp.List[Model]:
+        query = """
+           SELECT *
+           FROM models
+           WHERE team_id = $1::UUID
+        """
+        records = await self.pool.fetch(query, team_id)
+        return [Model(**record) for record in records]
 
     # async def add_obstrel(ObstrelInfo):
     #     pass

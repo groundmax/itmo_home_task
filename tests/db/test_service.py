@@ -1,18 +1,19 @@
 # pylint: disable=attribute-defined-outside-init
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import orm
 
-from requestor.db.exceptions import DuplicatedTeamError, TeamNotFoundError
-from requestor.db.models import TeamsTable
+from requestor.db.exceptions import DuplicatedModelError, DuplicatedTeamError, TeamNotFoundError
+from requestor.db.models import ModelsTable, TeamsTable
 from requestor.db.service import DBService
-from requestor.models import TeamInfo
+from requestor.models import ModelInfo, TeamInfo
 from requestor.utils import utc_now
 from tests.utils import (
     ApproxDatetime,
     DBObjectCreator,
     assert_db_model_equal_to_pydantic_model,
+    make_db_model,
     make_db_team,
 )
 
@@ -122,3 +123,101 @@ class TestTeams:
     async def test_get_nonexistent_team_by_chat_success(self, db_service: DBService) -> None:
         team = await db_service.get_team_by_chat(self.team_info.chat_id)
         assert team is None
+
+
+class TestModels:
+    def setup(self) -> None:
+        self.team_info = TeamInfo(
+            title="some_title",
+            chat_id=12345,
+            api_base_url="some_url",
+            api_key="some_key",
+        )
+        self.other_team_info = TeamInfo(
+            title="other_title",
+            chat_id=54321,
+            api_base_url="other_url",
+            api_key=None,
+        )
+
+    @staticmethod
+    def add_team(
+        team_info: TeamInfo,
+        create_db_object: DBObjectCreator,
+    ) -> UUID:
+        team_id = uuid4()
+        create_db_object(make_db_team(**team_info.dict(), team_id=team_id))
+        return team_id
+
+    @staticmethod
+    def make_model_info(team_id: UUID, rnd: str = "") -> ModelInfo:
+        return ModelInfo(team_id=team_id, name=f"some_name_{rnd}", description=f"some_desc_{rnd}")
+
+    async def test_add_model_success(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        team_id = self.add_team(self.team_info, create_db_object)
+        model_info = self.make_model_info(team_id)
+
+        model = await db_service.add_model(model_info)
+        for field in ModelInfo.schema()["properties"].keys():
+            assert getattr(model_info, field) == getattr(model, field)
+        assert model.created_at == ApproxDatetime(utc_now())
+
+        db_models = db_session.query(ModelsTable).all()
+        assert len(db_models) == 1
+        assert_db_model_equal_to_pydantic_model(db_models[0], model)
+
+    async def test_add_duplicated_model(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        team_id = self.add_team(self.team_info, create_db_object)
+        model_info = self.make_model_info(team_id)
+
+        create_db_object(make_db_model(**model_info.dict()))
+
+        other_model_info = model_info.copy()
+        other_model_info.description = "other_description"
+        with pytest.raises(DuplicatedModelError, match="team_id, name"):
+            await db_service.add_model(other_model_info)
+        db_teams = db_session.query(TeamsTable).all()
+        assert len(db_teams) == 1
+
+    async def test_add_model_for_nonexistent_team(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        model_info = self.make_model_info(uuid4())
+        with pytest.raises(TeamNotFoundError):
+            await db_service.add_model(model_info)
+
+        db_teams = db_session.query(TeamsTable).all()
+        assert len(db_teams) == 0
+
+    async def test_get_team_models_success(
+        self, db_service: DBService, create_db_object: DBObjectCreator
+    ) -> None:
+        team_id = self.add_team(self.team_info, create_db_object)
+        model_1_info = self.make_model_info(team_id, rnd="1")
+        create_db_object(make_db_model(**model_1_info.dict()))
+        model_2_info = self.make_model_info(team_id, rnd="2")
+        create_db_object(make_db_model(**model_2_info.dict()))
+
+        models = await db_service.get_team_models(team_id)
+        assert sorted(m.name for m in models) == [model_1_info.name, model_2_info.name]
+
+    async def test_get_team_models_when_no_models(
+        self, db_service: DBService, create_db_object: DBObjectCreator
+    ) -> None:
+        team_id = self.add_team(self.team_info, create_db_object)
+
+        models = await db_service.get_team_models(team_id)
+        assert len(models) == 0

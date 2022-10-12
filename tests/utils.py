@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 
-from requestor.db.models import Base, TeamsTable
+from requestor.db.models import Base, ModelsTable, TeamsTable
 
 DBObjectCreator = tp.Callable[[Base], None]
 
@@ -57,4 +57,20 @@ def make_db_team(
         api_key=api_key,
         created_at=created_at,
         updated_at=updated_at,
+    )
+
+
+def make_db_model(
+    model_id: tp.Optional[UUID] = None,
+    team_id: tp.Optional[UUID] = None,
+    name: str = "some_title",
+    description: tp.Optional[str] = "some_title",
+    created_at: datetime = datetime(2022, 10, 11),
+) -> TeamsTable:
+    return ModelsTable(
+        model_id=str(model_id or uuid4()),
+        team_id=str(team_id or uuid4()),
+        name=name,
+        description=description,
+        created_at=created_at,
     )
