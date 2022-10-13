@@ -10,9 +10,14 @@ from requestor.db.service import DBService
 from requestor.models import ModelInfo, TeamInfo
 from requestor.utils import utc_now
 from tests.utils import (
+    OTHER_TEAM_INFO,
+    TEAM_INFO,
     ApproxDatetime,
     DBObjectCreator,
+    add_model,
+    add_team,
     assert_db_model_equal_to_pydantic_model,
+    gen_model_info,
     make_db_model,
     make_db_team,
 )
@@ -25,28 +30,14 @@ async def test_ping(db_service: DBService) -> None:
 
 
 class TestTeams:
-    def setup(self) -> None:
-        self.team_info = TeamInfo(
-            title="some_title",
-            chat_id=12345,
-            api_base_url="some_url",
-            api_key="some_key",
-        )
-        self.other_team_info = TeamInfo(
-            title="other_title",
-            chat_id=54321,
-            api_base_url="other_url",
-            api_key=None,
-        )
-
     async def test_add_team_success(
         self,
         db_service: DBService,
         db_session: orm.Session,
     ) -> None:
-        team = await db_service.add_team(self.team_info)
+        team = await db_service.add_team(TEAM_INFO)
         for field in TeamInfo.schema()["properties"].keys():
-            assert getattr(self.team_info, field) == getattr(team, field)
+            assert getattr(TEAM_INFO, field) == getattr(team, field)
         assert team.created_at == ApproxDatetime(utc_now())
         assert team.updated_at == ApproxDatetime(utc_now())
 
@@ -63,10 +54,10 @@ class TestTeams:
         create_db_object: DBObjectCreator,
         column: str,
     ) -> None:
-        create_db_object(make_db_team(**self.team_info.dict()))
+        create_db_object(make_db_team(**TEAM_INFO.dict()))
 
-        other_team_info = self.other_team_info
-        setattr(other_team_info, column, getattr(self.team_info, column))
+        other_team_info = OTHER_TEAM_INFO.copy()
+        setattr(other_team_info, column, getattr(TEAM_INFO, column))
         with pytest.raises(DuplicatedTeamError, match=column):
             await db_service.add_team(other_team_info)
         db_teams = db_session.query(TeamsTable).all()
@@ -76,11 +67,11 @@ class TestTeams:
         self, db_service: DBService, db_session: orm.Session, create_db_object: DBObjectCreator
     ) -> None:
         team_id = uuid4()
-        base_db_team = make_db_team(**self.team_info.dict(), team_id=team_id)
+        base_db_team = make_db_team(**TEAM_INFO.dict(), team_id=team_id)
         create_db_object(base_db_team)
-        updated_team = await db_service.update_team(team_id, self.other_team_info)
+        updated_team = await db_service.update_team(team_id, OTHER_TEAM_INFO)
         for field in TeamInfo.schema()["properties"].keys():
-            assert getattr(self.other_team_info, field) == getattr(updated_team, field)
+            assert getattr(OTHER_TEAM_INFO, field) == getattr(updated_team, field)
         assert updated_team.updated_at == ApproxDatetime(utc_now())
         assert updated_team.created_at == base_db_team.created_at
 
@@ -97,70 +88,43 @@ class TestTeams:
         create_db_object: DBObjectCreator,
         column: str,
     ) -> None:
-        create_db_object(make_db_team(**self.team_info.dict()))
+        create_db_object(make_db_team(**TEAM_INFO.dict()))
 
         team_id = uuid4()
-        base_db_team = make_db_team(**self.other_team_info.dict(), team_id=team_id)
+        base_db_team = make_db_team(**OTHER_TEAM_INFO.dict(), team_id=team_id)
         create_db_object(base_db_team)
 
-        updated_team_info = self.other_team_info
-        setattr(updated_team_info, column, getattr(self.team_info, column))
+        updated_team_info = OTHER_TEAM_INFO.copy()
+        setattr(updated_team_info, column, getattr(TEAM_INFO, column))
         with pytest.raises(DuplicatedTeamError, match=column):
             await db_service.update_team(team_id, updated_team_info)
 
     async def test_update_nonexistent_team(self, db_service: DBService) -> None:
         with pytest.raises(TeamNotFoundError):
-            await db_service.update_team(uuid4(), self.other_team_info)
+            await db_service.update_team(uuid4(), OTHER_TEAM_INFO)
 
     async def test_get_team_by_chat_success(
         self, db_service: DBService, create_db_object: DBObjectCreator
     ) -> None:
-        db_team = make_db_team(**self.team_info.dict())
+        db_team = make_db_team(**TEAM_INFO.dict())
         create_db_object(db_team)
-        team = await db_service.get_team_by_chat(self.team_info.chat_id)
+        team = await db_service.get_team_by_chat(TEAM_INFO.chat_id)
         assert_db_model_equal_to_pydantic_model(db_team, team)
 
     async def test_get_nonexistent_team_by_chat_success(self, db_service: DBService) -> None:
-        team = await db_service.get_team_by_chat(self.team_info.chat_id)
+        team = await db_service.get_team_by_chat(TEAM_INFO.chat_id)
         assert team is None
 
 
 class TestModels:
-    def setup(self) -> None:
-        self.team_info = TeamInfo(
-            title="some_title",
-            chat_id=12345,
-            api_base_url="some_url",
-            api_key="some_key",
-        )
-        self.other_team_info = TeamInfo(
-            title="other_title",
-            chat_id=54321,
-            api_base_url="other_url",
-            api_key=None,
-        )
-
-    @staticmethod
-    def add_team(
-        team_info: TeamInfo,
-        create_db_object: DBObjectCreator,
-    ) -> UUID:
-        team_id = uuid4()
-        create_db_object(make_db_team(**team_info.dict(), team_id=team_id))
-        return team_id
-
-    @staticmethod
-    def make_model_info(team_id: UUID, rnd: str = "") -> ModelInfo:
-        return ModelInfo(team_id=team_id, name=f"some_name_{rnd}", description=f"some_desc_{rnd}")
-
     async def test_add_model_success(
         self,
         db_service: DBService,
         db_session: orm.Session,
         create_db_object: DBObjectCreator,
     ) -> None:
-        team_id = self.add_team(self.team_info, create_db_object)
-        model_info = self.make_model_info(team_id)
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_info = gen_model_info(team_id)
 
         model = await db_service.add_model(model_info)
         for field in ModelInfo.schema()["properties"].keys():
@@ -177,10 +141,9 @@ class TestModels:
         db_session: orm.Session,
         create_db_object: DBObjectCreator,
     ) -> None:
-        team_id = self.add_team(self.team_info, create_db_object)
-        model_info = self.make_model_info(team_id)
-
-        create_db_object(make_db_model(**model_info.dict()))
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_info = gen_model_info(team_id)
+        add_model(model_info, create_db_object)
 
         other_model_info = model_info.copy()
         other_model_info.description = "other_description"
@@ -195,7 +158,7 @@ class TestModels:
         db_session: orm.Session,
         create_db_object: DBObjectCreator,
     ) -> None:
-        model_info = self.make_model_info(uuid4())
+        model_info = gen_model_info(uuid4())
         with pytest.raises(TeamNotFoundError):
             await db_service.add_model(model_info)
 
@@ -205,11 +168,11 @@ class TestModels:
     async def test_get_team_models_success(
         self, db_service: DBService, create_db_object: DBObjectCreator
     ) -> None:
-        team_id = self.add_team(self.team_info, create_db_object)
-        model_1_info = self.make_model_info(team_id, rnd="1")
-        create_db_object(make_db_model(**model_1_info.dict()))
-        model_2_info = self.make_model_info(team_id, rnd="2")
-        create_db_object(make_db_model(**model_2_info.dict()))
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_1_info = gen_model_info(team_id, rnd="1")
+        add_model(model_1_info, create_db_object)
+        model_2_info = gen_model_info(team_id, rnd="2")
+        add_model(model_2_info, create_db_object)
 
         models = await db_service.get_team_models(team_id)
         assert sorted(m.name for m in models) == [model_1_info.name, model_2_info.name]
@@ -217,7 +180,7 @@ class TestModels:
     async def test_get_team_models_when_no_models(
         self, db_service: DBService, create_db_object: DBObjectCreator
     ) -> None:
-        team_id = self.add_team(self.team_info, create_db_object)
+        team_id = add_team(TEAM_INFO, create_db_object)
 
         models = await db_service.get_team_models(team_id)
         assert len(models) == 0
