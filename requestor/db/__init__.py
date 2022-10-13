@@ -1,4 +1,11 @@
-from .exceptions import DuplicatedModelError, DuplicatedTeamError, DuplicatedMetricError, TeamNotFoundError, ModelNotFoundError, TrialNotFoundError
+from .exceptions import (
+    DuplicatedMetricError,
+    DuplicatedModelError,
+    DuplicatedTeamError,
+    ModelNotFoundError,
+    TeamNotFoundError,
+    TrialNotFoundError,
+)
 from .service import DBService
 
 __all__ = (
