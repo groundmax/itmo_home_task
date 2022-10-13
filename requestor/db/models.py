@@ -2,6 +2,7 @@ from sqlalchemy import Column, ForeignKey, Index, orm
 from sqlalchemy.dialects import postgresql as pg
 from sqlalchemy.ext.declarative import DeclarativeMeta, declarative_base
 
+from requestor.models import TrialStatus
 from requestor.utils import make_uuid
 
 Base: DeclarativeMeta = declarative_base()
@@ -31,3 +32,22 @@ class ModelsTable(Base):
     team = orm.relationship(TeamsTable)
 
     __table_args__ = (Index("team_model_idx", "team_id", "name", unique=True),)
+
+
+trial_status_enum = pg.ENUM(
+    *TrialStatus.__members__.keys(),
+    name="trial_status_enum",
+    create_type=False,
+)
+
+
+class TrialsTable(Base):
+    __tablename__ = "trials"
+
+    trial_id = Column(pg.UUID, primary_key=True, default=make_uuid)
+    model_id = Column(pg.UUID, ForeignKey(ModelsTable.model_id), nullable=False)
+    created_at = Column(pg.TIMESTAMP, nullable=False)
+    finished_at = Column(pg.TIMESTAMP, nullable=True)
+    status = Column(trial_status_enum, nullable=False)
+
+    model = orm.relationship(ModelsTable)

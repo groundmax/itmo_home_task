@@ -4,8 +4,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 
-from requestor.db.models import Base, ModelsTable, TeamsTable
-from requestor.models import ModelInfo, TeamInfo
+from requestor.db.models import Base, ModelsTable, TeamsTable, TrialsTable
+from requestor.models import ModelInfo, TeamInfo, TrialStatus
 
 DBObjectCreator = tp.Callable[[Base], None]
 
@@ -91,6 +91,22 @@ def make_db_model(
     )
 
 
+def make_db_trial(
+    trial_id: tp.Optional[UUID] = None,
+    model_id: tp.Optional[UUID] = None,
+    created_at: datetime = datetime(2022, 10, 11),
+    finished_at: datetime = datetime(2022, 10, 12),
+    status: TrialStatus = TrialStatus.started,
+) -> TeamsTable:
+    return TrialsTable(
+        trial_id=str(trial_id or uuid4()),
+        model_id=str(model_id or uuid4()),
+        created_at=created_at,
+        finished_at=finished_at,
+        status=status,
+    )
+
+
 def add_team(
     team_info: TeamInfo,
     create_db_object: DBObjectCreator,
@@ -107,6 +123,16 @@ def add_model(
     model_id = uuid4()
     create_db_object(make_db_model(**model_info.dict(), model_id=model_id))
     return model_id
+
+
+def add_trial(
+    model_id: UUID,
+    status: TrialStatus,
+    create_db_object: DBObjectCreator,
+) -> UUID:
+    trial_id = uuid4()
+    create_db_object(make_db_trial(trial_id=trial_id, model_id=model_id, status=status))
+    return trial_id
 
 
 def gen_model_info(team_id: UUID, rnd: str = "") -> ModelInfo:

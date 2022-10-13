@@ -18,9 +18,21 @@ class DuplicatedTeamError(DuplicatedError):
     subject = "team"
 
 
-class TeamNotFoundError(Exception):
+class DuplicatedModelError(DuplicatedError):
+    subject = "model"
+
+
+class NotFoundError(Exception):
     pass
 
 
-class DuplicatedModelError(DuplicatedError):
-    subject = "model"
+class TeamNotFoundError(NotFoundError):
+    pass
+
+
+class ModelNotFoundError(NotFoundError):
+    pass
+
+
+class TrialNotFoundError(NotFoundError):
+    pass

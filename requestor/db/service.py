@@ -5,10 +5,16 @@ from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
-from requestor.models import Model, ModelInfo, Team, TeamInfo
+from requestor.models import Model, ModelInfo, Team, TeamInfo, Trial, TrialStatus
 from requestor.utils import utc_now
 
-from .exceptions import DuplicatedModelError, DuplicatedTeamError, TeamNotFoundError
+from .exceptions import (
+    DuplicatedModelError,
+    DuplicatedTeamError,
+    ModelNotFoundError,
+    TeamNotFoundError,
+    TrialNotFoundError,
+)
 
 
 class DBService(BaseModel):
@@ -151,11 +157,72 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id)
         return [Model(**record) for record in records]
 
-    # async def add_obstrel(ObstrelInfo):
-    #     pass
-    #
-    # async def set_obstrel_status(obstrel_id, status):
-    #     pass
-    #
+    async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:
+        if status.is_finished():
+            raise ValueError("New trial cannot be finished")
+
+        query = """
+            INSERT INTO trials
+                (model_id, created_at, status)
+            VALUES
+                (
+                    $1::UUID
+                    , $2::TIMESTAMP
+                    , $3::trial_status_enum
+                )
+            RETURNING
+                trial_id
+                , model_id
+                , created_at
+                , finished_at
+                , status
+        """
+        try:
+            record = await self.pool.fetchrow(
+                query,
+                model_id,
+                utc_now(),
+                status,
+            )
+        except ForeignKeyViolationError:
+            raise ModelNotFoundError(f"Model {model_id} not found")
+        return Trial(**record)
+
+    async def update_trial_status(self, trial_id: UUID, status: TrialStatus) -> Trial:
+        query = """
+            UPDATE trials
+            SET
+                finished_at = $1::TIMESTAMP
+                , status = $2::trial_status_enum
+            WHERE trial_id = $3::UUID
+            RETURNING
+                trial_id
+                , model_id
+                , created_at
+                , finished_at
+                , status
+        """
+        record = await self.pool.fetchrow(
+            query,
+            utc_now() if status.is_finished() else None,
+            status,
+            trial_id,
+        )
+
+        if record is None:
+            raise TrialNotFoundError(f"Trial '{trial_id}' not found")
+        return Trial(**record)
+
+    async def get_team_today_trial_stat(self, team_id: UUID) -> tp.Dict[TrialStatus, int]:
+        query = """
+            SELECT status, count(*) AS n_trials
+            FROM trials t
+                JOIN models m on t.model_id = m.model_id
+            WHERE m.team_id = $1::UUID and t.created_at::DATE = $2::DATE
+            GROUP BY status
+        """
+        records = await self.pool.fetch(query, team_id, utc_now().date())
+        return {r["status"]: r["n_trials"] for r in records}
+
     # async def add_model_metrics(obstrel_id, metrics):
     #     pass

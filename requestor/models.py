@@ -1,5 +1,6 @@
 import typing as tp
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -27,3 +28,21 @@ class ModelInfo(BaseModel):
 class Model(ModelInfo):
     model_id: UUID
     created_at: datetime
+
+
+class TrialStatus(str, Enum):
+    waiting = "waiting"
+    started = "started"
+    success = "success"
+    failed = "failed"
+
+    def is_finished(self) -> bool:
+        return self.value in (self.success, self.failed)
+
+
+class Trial(BaseModel):
+    trial_id: UUID
+    model_id: UUID
+    created_at: datetime
+    finished_at: tp.Optional[datetime]
+    status: TrialStatus

@@ -1,13 +1,20 @@
 # pylint: disable=attribute-defined-outside-init
-from uuid import UUID, uuid4
+from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import orm
 
-from requestor.db.exceptions import DuplicatedModelError, DuplicatedTeamError, TeamNotFoundError
-from requestor.db.models import ModelsTable, TeamsTable
+from requestor.db.exceptions import (
+    DuplicatedModelError,
+    DuplicatedTeamError,
+    ModelNotFoundError,
+    TeamNotFoundError,
+    TrialNotFoundError,
+)
+from requestor.db.models import ModelsTable, TeamsTable, TrialsTable
 from requestor.db.service import DBService
-from requestor.models import ModelInfo, TeamInfo
+from requestor.models import ModelInfo, TeamInfo, TrialStatus
 from requestor.utils import utc_now
 from tests.utils import (
     OTHER_TEAM_INFO,
@@ -16,10 +23,11 @@ from tests.utils import (
     DBObjectCreator,
     add_model,
     add_team,
+    add_trial,
     assert_db_model_equal_to_pydantic_model,
     gen_model_info,
-    make_db_model,
     make_db_team,
+    make_db_trial,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -152,6 +160,24 @@ class TestModels:
         db_teams = db_session.query(TeamsTable).all()
         assert len(db_teams) == 1
 
+    async def test_add_model_with_same_name_for_other_team(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        other_team_id = add_team(OTHER_TEAM_INFO, create_db_object)
+        model_info = gen_model_info(team_id)
+        add_model(model_info, create_db_object)
+
+        other_model_info = model_info.copy()
+        other_model_info.team_id = other_team_id
+        await db_service.add_model(other_model_info)
+
+        db_teams = db_session.query(TeamsTable).all()
+        assert len(db_teams) == 2
+
     async def test_add_model_for_nonexistent_team(
         self,
         db_service: DBService,
@@ -184,3 +210,115 @@ class TestModels:
 
         models = await db_service.get_team_models(team_id)
         assert len(models) == 0
+
+
+class TestTrials:
+    @pytest.mark.parametrize("status", (TrialStatus.started, TrialStatus.waiting))
+    async def test_add_trial_success(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+        status: TrialStatus,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_id = add_model(gen_model_info(team_id), create_db_object)
+
+        trial = await db_service.add_trial(model_id, status)
+        assert trial.model_id == model_id
+        assert trial.created_at == ApproxDatetime(utc_now())
+        assert trial.finished_at is None
+        assert trial.status == status
+
+        db_trials = db_session.query(TrialsTable).all()
+        assert len(db_trials) == 1
+        assert_db_model_equal_to_pydantic_model(db_trials[0], trial)
+
+    @pytest.mark.parametrize("status", (TrialStatus.success, TrialStatus.failed))
+    async def test_add_finished_trial(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+        status: TrialStatus,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_id = add_model(gen_model_info(team_id), create_db_object)
+
+        with pytest.raises(ValueError):
+            await db_service.add_trial(model_id, status)
+
+        db_trials = db_session.query(TrialsTable).all()
+        assert len(db_trials) == 0
+
+    async def test_add_trial_for_nonexistent_model(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+    ) -> None:
+        with pytest.raises(ModelNotFoundError):
+            await db_service.add_trial(uuid4(), TrialStatus.started)
+
+        db_trials = db_session.query(TrialsTable).all()
+        assert len(db_trials) == 0
+
+    @pytest.mark.parametrize("status", TrialStatus)
+    async def test_update_trial_status(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+        status: TrialStatus,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_id = add_model(gen_model_info(team_id), create_db_object)
+        trial_id = add_trial(model_id, TrialStatus.started, create_db_object)
+
+        trial = await db_service.update_trial_status(trial_id, status)
+
+        assert trial.finished_at == (ApproxDatetime(utc_now()) if status.is_finished() else None)
+        assert trial.status == status
+
+        db_trials = db_session.query(TrialsTable).all()
+        assert len(db_trials) == 1
+        assert_db_model_equal_to_pydantic_model(db_trials[0], trial)
+
+    async def test_update_nonexistent_trial_status(self, db_service: DBService) -> None:
+        with pytest.raises(TrialNotFoundError):
+            await db_service.update_trial_status(uuid4(), TrialStatus.success)
+
+    async def test_get_trial_today_stat(
+        self,
+        db_service: DBService,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        t1_id = add_team(TEAM_INFO, create_db_object)
+        t2_id = add_team(OTHER_TEAM_INFO, create_db_object)
+
+        t1_m1_id = add_model(gen_model_info(t1_id), create_db_object)
+        t1_m2_id = add_model(gen_model_info(t1_id, rnd="2"), create_db_object)
+        t2_m1_id = add_model(gen_model_info(t2_id), create_db_object)
+
+        today = utc_now()
+        yesterday = utc_now() - timedelta(days=1)
+
+        trials = (
+            make_db_trial(model_id=t1_m1_id, status=TrialStatus.started, created_at=today),
+            make_db_trial(model_id=t1_m1_id, status=TrialStatus.started, created_at=today),
+            make_db_trial(model_id=t1_m1_id, status=TrialStatus.success, created_at=today),
+            make_db_trial(model_id=t1_m1_id, status=TrialStatus.success, created_at=yesterday),
+            make_db_trial(model_id=t1_m2_id, status=TrialStatus.waiting, created_at=today),
+            make_db_trial(model_id=t1_m2_id, status=TrialStatus.failed, created_at=today),
+            make_db_trial(model_id=t2_m1_id, status=TrialStatus.started, created_at=today),
+        )
+        for trial in trials:
+            create_db_object(trial)
+
+        t1_trials_stat = await db_service.get_team_today_trial_stat(t1_id)
+
+        assert t1_trials_stat == {
+            TrialStatus.started: 2,
+            TrialStatus.waiting: 1,
+            TrialStatus.success: 1,
+            TrialStatus.failed: 1,
+        }
