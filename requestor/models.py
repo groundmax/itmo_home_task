@@ -46,3 +46,8 @@ class Trial(BaseModel):
     created_at: datetime
     finished_at: tp.Optional[datetime]
     status: TrialStatus
+
+
+class Metric(BaseModel):
+    name: str
+    value: float

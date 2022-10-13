@@ -22,6 +22,10 @@ class DuplicatedModelError(DuplicatedError):
     subject = "model"
 
 
+class DuplicatedMetricError(DuplicatedError):
+    subject = "metric"
+
+
 class NotFoundError(Exception):
     pass
 

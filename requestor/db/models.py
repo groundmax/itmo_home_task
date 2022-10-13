@@ -51,3 +51,11 @@ class TrialsTable(Base):
     status = Column(trial_status_enum, nullable=False)
 
     model = orm.relationship(ModelsTable)
+
+
+class MetricsTable(Base):
+    __tablename__ = "metrics"
+
+    trial_id = Column(pg.UUID, ForeignKey(TrialsTable.trial_id), primary_key=True)
+    name = Column(pg.VARCHAR(64), primary_key=True)
+    value = Column(pg.FLOAT, nullable=False)

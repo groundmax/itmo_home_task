@@ -6,15 +6,16 @@ import pytest
 from sqlalchemy import orm
 
 from requestor.db.exceptions import (
+    DuplicatedMetricError,
     DuplicatedModelError,
     DuplicatedTeamError,
     ModelNotFoundError,
     TeamNotFoundError,
     TrialNotFoundError,
 )
-from requestor.db.models import ModelsTable, TeamsTable, TrialsTable
+from requestor.db.models import MetricsTable, ModelsTable, TeamsTable, TrialsTable
 from requestor.db.service import DBService
-from requestor.models import ModelInfo, TeamInfo, TrialStatus
+from requestor.models import Metric, ModelInfo, TeamInfo, TrialStatus
 from requestor.utils import utc_now
 from tests.utils import (
     OTHER_TEAM_INFO,
@@ -322,3 +323,51 @@ class TestTrials:
             TrialStatus.success: 1,
             TrialStatus.failed: 1,
         }
+
+
+class TestMetrics:
+    async def test_add_metrics_success(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_id = add_model(gen_model_info(team_id), create_db_object)
+        trial_id = add_trial(model_id, TrialStatus.started, create_db_object)
+        metrics = [Metric(name="m1", value=10), Metric(name="m2", value=20)]
+
+        await db_service.add_metrics(trial_id, metrics)
+
+        db_metrics = db_session.query(MetricsTable).all()
+        assert len(db_metrics) == 2
+
+    async def test_add_duplicated_metrics(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_id = add_model(gen_model_info(team_id), create_db_object)
+        trial_id = add_trial(model_id, TrialStatus.started, create_db_object)
+        metrics = [Metric(name="m1", value=10), Metric(name="m1", value=20)]
+
+        with pytest.raises(DuplicatedMetricError, match="trial_id, name"):
+            await db_service.add_metrics(trial_id, metrics)
+
+        db_metrics = db_session.query(MetricsTable).all()
+        assert len(db_metrics) == 0
+
+    async def test_add_metrics_for_nonexistent_trial(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+    ) -> None:
+        metrics = [Metric(name="m1", value=10), Metric(name="m1", value=20)]
+
+        with pytest.raises(TrialNotFoundError):
+            await db_service.add_metrics(uuid4(), metrics)
+
+        db_metrics = db_session.query(MetricsTable).all()
+        assert len(db_metrics) == 0

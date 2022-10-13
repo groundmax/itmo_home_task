@@ -5,10 +5,11 @@ from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
-from requestor.models import Model, ModelInfo, Team, TeamInfo, Trial, TrialStatus
+from requestor.models import Metric, Model, ModelInfo, Team, TeamInfo, Trial, TrialStatus
 from requestor.utils import utc_now
 
 from .exceptions import (
+    DuplicatedMetricError,
     DuplicatedModelError,
     DuplicatedTeamError,
     ModelNotFoundError,
@@ -224,5 +225,21 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id, utc_now().date())
         return {r["status"]: r["n_trials"] for r in records}
 
-    # async def add_model_metrics(obstrel_id, metrics):
-    #     pass
+    async def add_metrics(self, trial_id: UUID, metrics: tp.Iterable[Metric]) -> None:
+        query = """
+            INSERT INTO metrics
+                (trial_id, name, value)
+            VALUES
+                (
+                    $1::UUID
+                    , $2::VARCHAR
+                    , $3::FLOAT
+                )
+        """
+        values = ((trial_id, m.name, m.value) for m in metrics)
+        try:
+            await self.pool.executemany(query, values)
+        except UniqueViolationError as e:
+            raise DuplicatedMetricError(e)
+        except ForeignKeyViolationError:
+            raise TrialNotFoundError()
