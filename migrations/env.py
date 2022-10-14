@@ -1,8 +1,16 @@
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import create_engine, pool
+
+CURRENT_DIR = Path(__file__).parent
+ROOT_DIR = CURRENT_DIR.parent
+sys.path.append(str(ROOT_DIR.absolute()))
+
+from requestor.db.models import Base  # noqa: E402; pylint: disable=wrong-import-position
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -15,6 +23,8 @@ fileConfig(config.config_file_name)
 
 
 url = os.getenv("DB_URL")
+
+target_metadata = Base.metadata
 
 
 def run_migrations_offline():
@@ -33,6 +43,7 @@ def run_migrations_offline():
     context.configure(
         url=url,
         literal_binds=True,
+        target_metadata=target_metadata,
         dialect_opts={"paramstyle": "named"},
     )
 
@@ -55,6 +66,7 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
+            target_metadata=target_metadata,
         )
 
         with context.begin_transaction():
