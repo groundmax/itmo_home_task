@@ -36,6 +36,7 @@ class TrialStatus(str, Enum):
     success = "success"
     failed = "failed"
 
+    @property
     def is_finished(self) -> bool:
         return self.value in (self.success, self.failed)
 

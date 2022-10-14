@@ -159,7 +159,7 @@ class DBService(BaseModel):
         return [Model(**record) for record in records]
 
     async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:
-        if status.is_finished():
+        if status.is_finished:
             raise ValueError("New trial cannot be finished")
 
         query = """
@@ -205,7 +205,7 @@ class DBService(BaseModel):
         """
         record = await self.pool.fetchrow(
             query,
-            utc_now() if status.is_finished() else None,
+            utc_now() if status.is_finished else None,
             status,
             trial_id,
         )

@@ -277,7 +277,7 @@ class TestTrials:
 
         trial = await db_service.update_trial_status(trial_id, status)
 
-        assert trial.finished_at == (ApproxDatetime(utc_now()) if status.is_finished() else None)
+        assert trial.finished_at == (ApproxDatetime(utc_now()) if status.is_finished else None)
         assert trial.status == status
 
         db_trials = db_session.query(TrialsTable).all()

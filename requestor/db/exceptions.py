@@ -11,7 +11,7 @@ class DuplicatedError(Exception):
         self.column = re.search(r"Key \(([\w, ]+)\)=", base_error.detail).group(1)
 
     def __str__(self) -> str:
-        return f"{self.subject} with the same value in '{self.column}' column has already exist"
+        return f"{self.subject} with the same value in '{self.column}' column already exists"
 
 
 class DuplicatedTeamError(DuplicatedError):
