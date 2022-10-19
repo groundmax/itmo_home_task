@@ -23,6 +23,7 @@ def upgrade():
     op.create_table(
         "teams",
         sa.Column("team_id", postgresql.UUID(), nullable=False, server_default=SERVER_UUID),
+        sa.Column("description", sa.VARCHAR(length=128), nullable=False),
         sa.Column("title", sa.VARCHAR(length=128), nullable=False),
         sa.Column("chat_id", sa.BIGINT(), nullable=False),
         sa.Column("api_base_url", sa.VARCHAR(length=256), nullable=False),
@@ -32,6 +33,7 @@ def upgrade():
         sa.PrimaryKeyConstraint("team_id"),
         sa.UniqueConstraint("api_base_url"),
         sa.UniqueConstraint("title"),
+        sa.UniqueConstraint("description"),
     )
     op.create_index(op.f("ix_teams_chat_id"), "teams", ["chat_id"], unique=True)
     # ### end Alembic commands ###

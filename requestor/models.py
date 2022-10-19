@@ -6,6 +6,11 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
+class TokenInfo(BaseModel):
+    token: str
+    team_description: str
+
+
 class TeamInfo(BaseModel):
     title: str
     chat_id: int
@@ -15,6 +20,7 @@ class TeamInfo(BaseModel):
 
 class Team(TeamInfo):
     team_id: UUID
+    description: str
     created_at: datetime
     updated_at: datetime
 
