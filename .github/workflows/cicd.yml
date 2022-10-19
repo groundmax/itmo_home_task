@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       DB_URL: postgresql://user:pass@127.0.0.1:5432/db
+      BOT_TOKEN: BOT_TOKEN
+      BOT_NAME: BOT_NAME
 
     services:
 
