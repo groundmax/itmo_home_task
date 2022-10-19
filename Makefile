@@ -55,7 +55,7 @@ install: .venv .reports
 
 .bandit:
 	@echo "Running bandit checks...\t"
-	@bandit -q -r ${PROJECT} ${TESTS} ${MIGRATIONS} --skip B101
+	@bandit -q -r ${PROJECT} --skip B101
 	@echo "[Bandit checks finished]"
 
 .codespell:
