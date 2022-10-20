@@ -40,3 +40,7 @@ class ModelNotFoundError(NotFoundError):
 
 class TrialNotFoundError(NotFoundError):
     pass
+
+
+class TokenNotFoundError(NotFoundError):
+    pass
