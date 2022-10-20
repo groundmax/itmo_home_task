@@ -3,6 +3,8 @@ import typing as tp
 from functools import partial
 
 from aiogram import Dispatcher, types
+from aiogram.types import ParseMode
+from aiogram.utils.markdown import bold, text
 
 from requestor.db import DBService, DuplicatedTeamError, TeamNotFoundError
 from requestor.log import app_logger
@@ -35,111 +37,119 @@ async def handle(handler, db_service: DBService, message: types.Message) -> None
 
 
 async def start_h(message: types.Message, db_service: DBService) -> None:
-    reply = (
-        "Привет! Я бот, который будет проверять сервисы "
-        "в рамках курса по рекомендательным системам. "
-        "Наберите /help для вывода списка доступных команд."
+    reply = text(
+        "Привет! Я бот, который будет проверять сервисы",
+        "в рамках курса по рекомендательным системам.",
+        "Наберите /help для вывода списка доступных команд.",
     )
     await message.reply(reply)
 
 
 async def help_h(event: types.Message, db_service: DBService) -> None:
-    reply = (
-        "Список доступных команд:\n"
-        "/register_team team_name api_host api_key (опционально) - для регистрации команд\n"
-        "/update_team team_name api_host api_key (опционально) - для обновления данных команды\n"
-        "/show_current_team - для вывода данных по зарегистрированной команде\n"
+    reply = text(
+        bold("Список доступных команд:"),
+        "/register_team team_name api_host api_key (опционально) - для регистрации команд",
+        "/update_team team_name api_host api_key (опционально) - для обновления данных команды",
+        "/show_current_team - для вывода данных по зарегистрированной команде",
+        sep="\n",
     )
-    await event.reply(reply)
+    await event.reply(reply, parse_mode=ParseMode.MARKDOWN)
 
 
 async def register_team_h(message: types.Message, db_service: DBService) -> None:
     team_info = parse_msg_with_team_info(message)
 
     if team_info is None:
-        await message.reply(
-            "Пожалуйста, введите данные в корректном формате. "
-            "/register_team team_name api_host api_key (опционально)"
+        reply = text(
+            "Пожалуйста, введите данные в корректном формате.",
+            "/register\_team team\_name api\_host api\_key (опционально)",
         )
+        await message.reply(reply)
         return
 
     try:
         await db_service.add_team(team_info)
-        await message.reply(f"Команда `{team_info.title}` успешно зарегистрирована!")
-    # TODO: somehow deduplicate code? wrapper?
+        reply = f"Команда `{team_info.title}` успешно зарегистрирована!"
     except DuplicatedTeamError as e:
         if e.column == "chat_id":
-            await message.reply(
-                "Вы уже регистрировали команду. Если необходимо обновить что-то, "
-                "пожалуйста, воспользуйтесь командой /update_team."
+            reply = text(
+                "Вы уже регистрировали команду. Если необходимо обновить что-то,",
+                "пожалуйста, воспользуйтесь командой /update_team.",
             )
         elif e.column == "title":
-            await message.reply(
-                f"Команда с именем `{team_info.title}` уже существует. "
-                "Пожалуйста, выберите другое имя команды."
+            reply = text(
+                f"Команда с именем `{team_info.title}` уже существует.",
+                "Пожалуйста, выберите другое имя команды.",
             )
         elif e.column == "api_base_url":
-            await message.reply(
-                f"Хост: `{team_info.api_base_url}` уже кем-то используется. "
-                "Пожалуйста, выберите другой хост."
+            reply = text(
+                f"Хост: `{team_info.api_base_url}` уже кем-то используется.",
+                "Пожалуйста, выберите другой хост.",
             )
         else:
-            await message.reply(e)
+            reply = text(
+                "Что-то пошло не так.",
+                "Пожалуйста, попробуйте зарегистрироваться через несколько минут.",
+            )
+
+    await message.reply(reply)
 
 
 async def update_team_h(message: types.Message, db_service: DBService) -> None:
     updated_team_info = parse_msg_with_team_info(message)
+
     if updated_team_info is None:
-        await message.reply(
-            "Пожалуйста, введите данные в корректном формате. "
-            "/update_team team_name api_host api_key (опционально)"
+        reply = text(
+            "Пожалуйста, введите данные в корректном формате.",
+            "/update_team team_name api_host api_key (опционально)",
         )
+        await message.reply(reply)
         return
 
     current_team_info = await db_service.get_team_by_chat(message.chat.id)
 
     try:
         await db_service.update_team(current_team_info.team_id, updated_team_info)
-        await message.reply(
-            "Данные по вашей команде были обновлены. Воспользуйтесь командой /show_current_team"
+        reply = (
+            "Данные по вашей команде были обновлены. Воспользуйтесь командой /show_current_team."
         )
     except TeamNotFoundError:
-        await message.reply(
-            "Команда от вашега чата не найдена. Скорее всего, что вы еще не регистрировались."
-        )
-    # TODO: somehow deduplicate code? wrapper?
+        reply = "Команда от вашега чата не найдена. Скорее всего, что вы еще не регистрировались."
     except DuplicatedTeamError as e:
-        if e.column == "chat_id":
-            await message.reply(
-                "Вы уже регистрировали команду. Если необходимо обновить что-то, "
-                "пожалуйста, воспользуйтесь командой /update_team."
-            )
-        elif e.column == "title":
-            await message.reply(
-                f"Команда с именем `{updated_team_info.title}` уже существует. "
-                "Пожалуйста, выберите другое имя команды."
+        if e.column == "title":
+            reply = text(
+                f"Команда с именем `{updated_team_info.title}` уже существует.",
+                "Пожалуйста, выберите другое имя команды.",
             )
         elif e.column == "api_base_url":
-            await message.reply(
-                f"Хост: `{updated_team_info.api_base_url}` уже кем-то используется. "
-                "Пожалуйста, выберите другой хост."
+            reply = text(
+                f"Хост: `{updated_team_info.api_base_url}` уже кем-то используется.",
+                "Пожалуйста, выберите другой хост.",
             )
         else:
-            await message.reply(e)
+            reply = text(
+                "Что-то пошло не так.",
+                "Пожалуйста, попробуйте зарегистрироваться через несколько минут.",
+            )
+    await message.reply(reply)
 
 
 async def show_current_team_h(message: types.Message, db_service: DBService) -> None:
     try:
         team_info = await db_service.get_team_by_chat(message.chat.id)
-        await message.reply(
-            f"Команда: {team_info.title}\n"
-            f"Хост: {team_info.api_base_url}\n"
-            f"API Токен: {team_info.api_key if team_info.api_key is not None else 'Отсутствует'}\n"
+        api_key = team_info.api_key if team_info.api_key is not None else "Отсутствует"
+        reply = text(
+            f"{bold('Команда')}: {team_info.title}",
+            f"{bold('Хост')}: {team_info.api_base_url}",
+            f"{bold('API Токен')}: {api_key}",
+            sep="\n",
         )
     except TeamNotFoundError:
-        await message.reply(
+        reply = text(
             "Команда от вашега чата не найдена. Скорее всего, что вы еще не регистрировались."
         )
+
+    await message.reply(reply, parse_mode=ParseMode.MARKDOWN)
 
 
 async def other_messages_h(message: types.Message, db_service: DBService) -> None:

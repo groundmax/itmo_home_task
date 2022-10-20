@@ -10,8 +10,6 @@ class TeamInfo(BaseModel):
     title: str
     chat_id: int
     api_base_url: str
-    # TODO: move from python3.10 to 3.8 with poetry to fix issues with pylint
-    # https://github.com/PyCQA/pylint/issues/1498#issuecomment-717978456
     api_key: tp.Optional[str]
 
 
