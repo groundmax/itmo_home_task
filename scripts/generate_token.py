@@ -36,7 +36,7 @@ def add_token_to_db(db_url: str, team_description: str, token: str) -> None:
 
 @click.command()
 @click.argument("team_description")
-def main(team_description: str):
+def main(team_description: str) -> None:
     """
     Generate token and insert in to DB (given by DB_URL env)
     together with given description
