@@ -4,10 +4,15 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 
-from requestor.db.models import Base, ModelsTable, TeamsTable, TrialsTable
-from requestor.models import ModelInfo, TeamInfo, TrialStatus
+from requestor.db.models import Base, ModelsTable, TeamsTable, TokensTable, TrialsTable
+from requestor.models import ModelInfo, TeamInfo, TokenInfo, TrialStatus
 
 DBObjectCreator = tp.Callable[[Base], None]
+
+TOKEN_INFO = TokenInfo(
+    token="super_token",
+    team_description="super_description",
+)
 
 TEAM_INFO = TeamInfo(
     title="some_title",
@@ -55,8 +60,19 @@ def assert_db_model_equal_to_pydantic_model(
         assert db_val == pydantic_val
 
 
+def make_db_token(
+    token: str = "some_token",
+    team_description: str = "desc",
+) -> TokensTable:
+    return TokensTable(
+        token=token,
+        team_description=team_description,
+    )
+
+
 def make_db_team(
     team_id: tp.Optional[UUID] = None,
+    description: tp.Optional[str] = None,
     title: str = "some_title",
     chat_id: int = 12345,
     api_base_url: str = "some_url",
@@ -66,6 +82,7 @@ def make_db_team(
 ) -> TeamsTable:
     return TeamsTable(
         team_id=str(team_id or uuid4()),
+        description="some_description_" + str(uuid4()) if description is None else description,
         title=title,
         chat_id=chat_id,
         api_base_url=api_base_url,
@@ -105,6 +122,13 @@ def make_db_trial(
         finished_at=finished_at,
         status=status,
     )
+
+
+def add_token(
+    token_info: TokenInfo,
+    create_db_object: DBObjectCreator,
+) -> None:
+    create_db_object(make_db_token(**token_info.dict()))
 
 
 def add_team(

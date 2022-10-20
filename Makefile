@@ -8,6 +8,7 @@ export PATH := ${VENV}/bin:${PATH}
 
 MIGRATIONS := migrations
 TESTS := tests
+SCRIPTS := scripts
 REPORTS := .reports
 
 IMAGE_NAME := ${PROJECT}
@@ -29,38 +30,38 @@ install: .venv .reports
 
 .isort:
 	@echo "Running isort checks..."
-	@isort --check ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@isort --check ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Isort checks finished]"
 
 .black:
 	@echo "Running black checks..."
-	@black --check --diff ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@black --check --diff ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Black checks finished]"
 
 .pylint: .reports
 	@echo "Running pylint checks..."
-	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS}
-	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS} > ${REPORTS}/pylint.txt
+	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
+	@pylint ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS} > ${REPORTS}/pylint.txt
 	@echo "[Pylint checks finished]"
 
 .mypy:
 	@echo "Running mypy checks..."
-	@mypy ${PROJECT} ${TESTS}
+	@mypy ${PROJECT} ${TESTS} ${SCRIPTS}
 	@echo "[Mypy checks finished]"
 
 .flake8:
 	@echo "Running flake8 checks...\t"
-	@flake8 ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@flake8 ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Flake8 checks finished]"
 
 .bandit:
 	@echo "Running bandit checks...\t"
-	@bandit -q -r ${PROJECT} ${TESTS} ${MIGRATIONS} --skip B101
+	@bandit -q -r ${PROJECT} ${SCRIPTS} --skip B101
 	@echo "[Bandit checks finished]"
 
 .codespell:
 	@echo "Running codespell checks...\t"
-	@codespell ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@codespell ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Codespell checks finished]"
 
 
@@ -68,12 +69,12 @@ install: .venv .reports
 
 .isort_fix:
 	@echo "Fixing isort..."
-	@isort ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@isort ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Isort fixed]"
 
 .black_fix:
 	@echo "Formatting with black..."
-	@black -q  ${PROJECT} ${TESTS} ${MIGRATIONS}
+	@black -q  ${PROJECT} ${TESTS} ${MIGRATIONS} ${SCRIPTS}
 	@echo "[Black fixed]"
 
 

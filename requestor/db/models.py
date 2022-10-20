@@ -12,6 +12,7 @@ class TeamsTable(Base):
     __tablename__ = "teams"
 
     team_id = Column(pg.UUID, primary_key=True, default=make_uuid)
+    description = Column(pg.VARCHAR(128), nullable=False, unique=True)
     title = Column(pg.VARCHAR(128), nullable=False, unique=True)
     chat_id = Column(pg.BIGINT, nullable=False, unique=True, index=True)
     api_base_url = Column(pg.VARCHAR(256), nullable=False, unique=True)
@@ -59,3 +60,10 @@ class MetricsTable(Base):
     trial_id = Column(pg.UUID, ForeignKey(TrialsTable.trial_id), primary_key=True)
     name = Column(pg.VARCHAR(64), primary_key=True)
     value = Column(pg.FLOAT, nullable=False)
+
+
+class TokensTable(Base):
+    __tablename__ = "tokens"
+
+    token = Column(pg.VARCHAR(64), primary_key=True, nullable=False, unique=True)
+    team_description = Column(pg.VARCHAR(128), nullable=False, unique=True)

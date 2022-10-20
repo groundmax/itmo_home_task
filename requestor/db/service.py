@@ -14,6 +14,7 @@ from .exceptions import (
     DuplicatedTeamError,
     ModelNotFoundError,
     TeamNotFoundError,
+    TokenNotFoundError,
     TrialNotFoundError,
 )
 
@@ -35,21 +36,35 @@ class DBService(BaseModel):
     async def ping(self) -> bool:
         return await self.pool.fetchval("SELECT TRUE")
 
-    async def add_team(self, team_info: TeamInfo) -> Team:
+    async def _pop_token(self, token: str) -> str:
+        query = """
+            DELETE FROM tokens
+            WHERE token = $1::VARCHAR
+            RETURNING team_description
+        """
+        team_description = await self.pool.fetchval(query, token)
+        if team_description is None:
+            raise TokenNotFoundError()
+        return team_description
+
+    async def add_team(self, team_info: TeamInfo, token: str) -> Team:
+        description = await self._pop_token(token)
         query = """
             INSERT INTO teams
-                (title, chat_id, api_base_url, api_key, created_at, updated_at)
+                (description, title, chat_id, api_base_url, api_key, created_at, updated_at)
             VALUES
                 (
                     $1::VARCHAR
-                    , $2::BIGINT
-                    , $3::VARCHAR
+                    , $2::VARCHAR
+                    , $3::BIGINT
                     , $4::VARCHAR
-                    , $5::TIMESTAMP
+                    , $5::VARCHAR
                     , $6::TIMESTAMP
+                    , $7::TIMESTAMP
                 )
             RETURNING
                 team_id
+                , description
                 , title
                 , chat_id
                 , api_base_url
@@ -60,6 +75,7 @@ class DBService(BaseModel):
         try:
             record = await self.pool.fetchrow(
                 query,
+                description,
                 team_info.title,
                 team_info.chat_id,
                 team_info.api_base_url,
@@ -83,6 +99,7 @@ class DBService(BaseModel):
             WHERE team_id = $6::UUID
             RETURNING
                 team_id
+                , description
                 , title
                 , chat_id
                 , api_base_url

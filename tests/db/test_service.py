@@ -11,19 +11,22 @@ from requestor.db.exceptions import (
     DuplicatedTeamError,
     ModelNotFoundError,
     TeamNotFoundError,
+    TokenNotFoundError,
     TrialNotFoundError,
 )
-from requestor.db.models import MetricsTable, ModelsTable, TeamsTable, TrialsTable
+from requestor.db.models import MetricsTable, ModelsTable, TeamsTable, TokensTable, TrialsTable
 from requestor.db.service import DBService
 from requestor.models import Metric, ModelInfo, TeamInfo, TrialStatus
 from requestor.utils import utc_now
 from tests.utils import (
     OTHER_TEAM_INFO,
     TEAM_INFO,
+    TOKEN_INFO,
     ApproxDatetime,
     DBObjectCreator,
     add_model,
     add_team,
+    add_token,
     add_trial,
     assert_db_model_equal_to_pydantic_model,
     gen_model_info,
@@ -43,17 +46,22 @@ class TestTeams:
         self,
         db_service: DBService,
         db_session: orm.Session,
+        create_db_object: DBObjectCreator,
     ) -> None:
-        team = await db_service.add_team(TEAM_INFO)
+        add_token(TOKEN_INFO, create_db_object)
+        team = await db_service.add_team(TEAM_INFO, TOKEN_INFO.token)
         for field in TeamInfo.schema()["properties"].keys():
             assert getattr(TEAM_INFO, field) == getattr(team, field)
         assert team.created_at == ApproxDatetime(utc_now())
         assert team.updated_at == ApproxDatetime(utc_now())
+        assert team.description == TOKEN_INFO.team_description
 
         db_teams = db_session.query(TeamsTable).all()
         assert len(db_teams) == 1
         db_team = db_teams[0]
         assert_db_model_equal_to_pydantic_model(db_team, team)
+
+        assert db_session.query(TokensTable).count() == 0
 
     @pytest.mark.parametrize("column", ("title", "chat_id", "api_base_url"))
     async def test_add_duplicated_team(
@@ -65,12 +73,40 @@ class TestTeams:
     ) -> None:
         create_db_object(make_db_team(**TEAM_INFO.dict()))
 
+        add_token(TOKEN_INFO, create_db_object)
         other_team_info = OTHER_TEAM_INFO.copy()
         setattr(other_team_info, column, getattr(TEAM_INFO, column))
         with pytest.raises(DuplicatedTeamError, match=column):
-            await db_service.add_team(other_team_info)
-        db_teams = db_session.query(TeamsTable).all()
-        assert len(db_teams) == 1
+            await db_service.add_team(other_team_info, TOKEN_INFO.token)
+        assert db_session.query(TeamsTable).count() == 1
+
+    async def test_add_team_with_duplicated_description(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        create_db_object(make_db_team(**TEAM_INFO.dict(), description=TOKEN_INFO.team_description))
+
+        add_token(TOKEN_INFO, create_db_object)
+        other_team_info = OTHER_TEAM_INFO.copy()
+
+        with pytest.raises(DuplicatedTeamError, match="description"):
+            await db_service.add_team(other_team_info, TOKEN_INFO.token)
+        assert db_session.query(TeamsTable).count() == 1
+
+    async def test_add_team_with_nonexistent_token(
+        self,
+        db_service: DBService,
+        db_session: orm.Session,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        add_token(TOKEN_INFO, create_db_object)
+
+        with pytest.raises(TokenNotFoundError):
+            await db_service.add_team(TEAM_INFO, "other_token")
+        assert db_session.query(TeamsTable).count() == 0
+        assert db_session.query(TokensTable).count() == 1
 
     async def test_update_team_success(
         self, db_service: DBService, db_session: orm.Session, create_db_object: DBObjectCreator
