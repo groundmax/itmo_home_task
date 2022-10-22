@@ -183,7 +183,6 @@ async def show_models_h(message: types.Message, db_service: DBService) -> None:
     if len(models) == 0:
         reply = "У вашей команды пока еще нет добавленных моделей"
     else:
-        # TODO: get this filters in sql query
         reply = generate_models_description(models)
 
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
