@@ -1,6 +1,5 @@
 # pylint: disable=attribute-defined-outside-init
 from datetime import timedelta
-from multiprocessing.sharedctypes import Value
 from uuid import uuid4
 
 import pytest
@@ -239,7 +238,10 @@ class TestModels:
         add_model(model_2_info, create_db_object)
 
         models = await db_service.get_team_last_n_models(team_id, 2)
-        assert sorted([m.name for m in models], reverse=True) == [model_2_info.name, model_1_info.name]
+        assert sorted([m.name for m in models], reverse=True) == [
+            model_2_info.name,
+            model_1_info.name,
+        ]
 
     async def test_get_team_last_n_models_when_no_models(
         self, db_service: DBService, create_db_object: DBObjectCreator

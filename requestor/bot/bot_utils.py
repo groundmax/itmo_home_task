@@ -1,10 +1,13 @@
 import typing as tp
+from datetime import timedelta
 
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
+
 from requestor.models import Model, TeamInfo
-from datetime import timedelta
+
 from .constants import DATE_FORMAT
+
 
 # TODO: somehow try generalize this func to reduce duplicate code
 def parse_msg_with_team_info(
@@ -42,9 +45,10 @@ def parse_msg_with_model_info(
     except NameError:
         return None, None
 
+
 def generate_model_description(model: Model, model_num: int) -> str:
     msc_time = model.created_at + timedelta(hours=3)
-    description =  "Отсутствует" if model.description is None else model.description
+    description = "Отсутствует" if model.description is None else model.description
     return text(
         bold(f"Модель #{model_num}"),
         f"{bold('Название')}: {escape_md(model.name)}",
@@ -54,7 +58,7 @@ def generate_model_description(model: Model, model_num: int) -> str:
     )
 
 
-def generate_models_description(models: tp.List[Model]) -> tp.List[str]:
+def generate_models_description(models: tp.List[Model]) -> str:
     model_descriptions = []
     for model_num, model in enumerate(models, 1):
         model_description = generate_model_description(model, model_num)

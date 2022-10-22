@@ -169,14 +169,14 @@ class DBService(BaseModel):
     async def get_team_last_n_models(self, team_id: UUID, limit: int) -> tp.List[Model]:
         if limit <= 0:
             raise ValueError(f"Parameter 'limit' should be positive, but got: {limit}")
-        query = f"""
+        query = """
            SELECT *
            FROM models
            WHERE team_id = $1::UUID
            ORDER BY created_at DESC
-           LIMIT {limit}
+           LIMIT $2::BIGINT
         """
-        records = await self.pool.fetch(query, team_id)
+        records = await self.pool.fetch(query, team_id, limit)
         return [Model(**record) for record in records]
 
     async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:

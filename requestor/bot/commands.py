@@ -4,6 +4,7 @@ from enum import Enum
 
 from aiogram.types import BotCommand
 from aiogram.utils.markdown import text
+
 from .constants import TEAM_MODELS_DISPLAY_LIMIT
 
 

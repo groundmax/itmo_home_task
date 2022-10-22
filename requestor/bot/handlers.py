@@ -4,7 +4,6 @@ from functools import partial
 from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
 from aiogram.utils.markdown import bold, escape_md, text
-from datetime import timedelta
 
 from requestor.db import (
     DBService,
@@ -17,9 +16,18 @@ from requestor.log import app_logger
 from requestor.models import ModelInfo, TeamInfo
 from requestor.settings import ServiceConfig
 
-from .bot_utils import parse_msg_with_model_info, parse_msg_with_team_info, generate_models_description
+from .bot_utils import (
+    generate_models_description,
+    parse_msg_with_model_info,
+    parse_msg_with_team_info,
+)
 from .commands import BotCommands
-from .constants import AVAILABLE_FOR_UPDATE, DATE_FORMAT, INCORRECT_DATA_IN_MSG, TEAM_MODELS_DISPLAY_LIMIT, TEAM_NOT_FOUND_MSG
+from .constants import (
+    AVAILABLE_FOR_UPDATE,
+    INCORRECT_DATA_IN_MSG,
+    TEAM_MODELS_DISPLAY_LIMIT,
+    TEAM_NOT_FOUND_MSG,
+)
 
 
 async def handle(handler, db_service: DBService, message: types.Message) -> None:
@@ -173,12 +181,13 @@ async def show_models_h(message: types.Message, db_service: DBService) -> None:
     models = await db_service.get_team_last_n_models(team.team_id, TEAM_MODELS_DISPLAY_LIMIT)
 
     if len(models) == 0:
-        return await message.reply("У вашей команды пока еще нет добавленных моделей")
+        reply = "У вашей команды пока еще нет добавленных моделей"
     else:
         # TODO: get this filters in sql query
         reply = generate_models_description(models)
 
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
+
 
 # TODO: create request handler
 async def request_h(message: types.Message, db_service: DBService) -> None:
