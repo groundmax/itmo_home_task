@@ -5,9 +5,8 @@ AVAILABLE_FOR_UPDATE: tp.Final = {
     "api_key",
 }
 
-
 INCORRECT_DATA_IN_MSG: tp.Final = (
-    "Пожалуйста, введите данные в корректном формате. " "Используйте команду /help для справки."
+    "Пожалуйста, введите данные в корректном формате. Используйте команду /help для справки."
 )
 
 TEAM_NOT_FOUND_MSG: tp.Final = (
