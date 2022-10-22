@@ -29,11 +29,11 @@ commands_description = (
             "С помощью этой команды можно зарегистрировать свою команду",
             "Принимает на вход аргументы через пробел:",
             "token - токен, который генерируется индивидуально для каждой команды.",
-            "title - название команды, без пробелов.",
+            "title - название команды, без пробелов и кавычек.",
             "api_base_url - хост, по которому будет находиться API команды.",
             "api_key - опционально, токен для запрашивания API.",
             "Пример использования:",
-            "/register_team 123 MyTeamName http://myapi.ru/api/v1 MyApiKey",
+            "/register_team MyToken MyTeamName http://myapi.ru/api/v1 MyApiKey",
             sep="\n",
         ),
     ),
@@ -51,25 +51,27 @@ commands_description = (
         ),
     ),
     (
-        "show_current_team",
-        "Вывод информацию по текущей команде",
-        "Выводит название команды, хоста и API токена",
+        "show_team",
+        "Вывод информации по текущей команде",
+        "Выводит название команды, хост и API токен",
     ),
     (
         "add_model",
         "Добавление новой модели",
         text(
-            "С помощью этой команды можно добавить модели для проверки.",
+            "С помощью этой команды можно добавить модель для проверки.",
             "Для этого используются следующие аргументы:",
-            "name - хост, по которому будет находиться API команды.",
+            "name - название модели, без пробелов и кавычек.",
             "description - опционально, более подробное описание модели",
-            "Пример использования для обновления хоста:",
+            "Пример использования для добавления модели:",
             "/add_model lightfm_64",
-            ("Далее модели будут запрашиваться по адресу: " "{api_base_url}/{name}/{user_id}"),
+            "Далее модели будут запрашиваться по адресу: {api_base_url}/{name}/{user_id}",
             (
                 "То есть адрес для запроса выглядит, например, так: "
-                "http://myapi.ru/api/v1/lightfm_64/123"
+                "http://myapi.ru/api/v1/lightfm_64/178"
             ),
+            "Пример использования для добавления модели с описанием:",
+            "/add_model lightfm_64 Добавили фичи по юзерам и айтемам",
             sep="\n",
         ),
     ),
@@ -80,6 +82,7 @@ commands_description = (
             "С помощью этой команды можно вывести следующую информацию:",
             "Название, описание (если присутствует) и дату добавления модели."
             "Если было добавлено более 10 моделей, то выведутся последние 10 по дате добавления",
+            "Время Московское",
             sep="\n",
         ),
     ),
@@ -100,7 +103,7 @@ class BotCommands(Enum):
     help: CommandDescription = cmd2cls_desc["help"]
     register_team: CommandDescription = cmd2cls_desc["register_team"]
     update_team: CommandDescription = cmd2cls_desc["update_team"]
-    show_current_team: CommandDescription = cmd2cls_desc["show_current_team"]
+    show_team: CommandDescription = cmd2cls_desc["show_team"]
     add_model: CommandDescription = cmd2cls_desc["add_model"]
     show_models: CommandDescription = cmd2cls_desc["show_models"]
 

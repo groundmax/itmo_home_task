@@ -4,6 +4,7 @@ from functools import partial
 from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
 from aiogram.utils.markdown import bold, escape_md, text
+from datetime import timedelta
 
 from requestor.db import (
     DBService,
@@ -106,7 +107,7 @@ async def update_team_h(message: types.Message, db_service: DBService) -> None:
         await db_service.update_team(current_team_info.team_id, updated_team_info)
         reply = text(
             "Данные по вашей команде успешно обновлены.",
-            "Воспользуйтесь командой /show_current_team.",
+            "Воспользуйтесь командой /show_team.",
         )
     except DuplicatedTeamError as e:
         if e.column == "api_base_url":
@@ -122,7 +123,7 @@ async def update_team_h(message: types.Message, db_service: DBService) -> None:
     await message.reply(reply)
 
 
-async def show_current_team_h(message: types.Message, db_service: DBService) -> None:
+async def show_team_h(message: types.Message, db_service: DBService) -> None:
     try:
         team_info = await db_service.get_team_by_chat(message.chat.id)
         api_key = team_info.api_key if team_info.api_key is not None else "Отсутствует"
@@ -172,23 +173,28 @@ async def show_models_h(message: types.Message, db_service: DBService) -> None:
     models = await db_service.get_team_models(team.team_id)
 
     if len(models) == 0:
-        reply = "У вашей команды пока еще нет добавленных моделей"
+        return await message.reply("У вашей команды пока еще нет добавленных моделей")
     else:
         # TODO: get this filters in sql query
         models.sort(key=lambda x: x.created_at, reverse=True)
-        models = models[:10]
+        models = models[:5]
         dt_fmt = "%Y-%m-%d %H:%M:%S"
-        reply = text(
-            "Название модели, Описание, Дата добавления",
-            "\n".join(
-                f"{model.name}, {model.description}, {model.created_at.strftime(dt_fmt)}"
-                for model in models
-            ),
-            sep="\n",
-        )
+        model_descriptions = []
+        for model_num, model in enumerate(models, 1):
+            msc_time = model.created_at + timedelta(hours=3)
+            description =  "Отсутствует" if model.description is None else model.description
+            model_description = text(
+                bold(f"Модель #{model_num}"),
+                f"{bold('Название')}: {escape_md(model.name)}",
+                f"{bold('Описание')}: {escape_md(description)}",
+                f"{bold('Дата добавления по МСК')}: {escape_md(msc_time.strftime(dt_fmt))}",
+                sep="\n",
+            )
+            model_descriptions.append(model_description)
 
-    await message.reply(reply)
+        reply = "\n\n".join(model_descriptions)
 
+    await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 # TODO: create request handler
 async def request_h(message: types.Message, db_service: DBService) -> None:
@@ -207,7 +213,7 @@ def register_handlers(dp: Dispatcher, db_service: DBService, config: ServiceConf
         BotCommands.help.name: help_h,
         BotCommands.register_team.name: register_team_h,
         BotCommands.update_team.name: update_team_h,
-        BotCommands.show_current_team.name: show_current_team_h,
+        BotCommands.show_team.name: show_team_h,
         BotCommands.add_model.name: add_model_h,
         BotCommands.show_models.name: show_models_h,
     }
