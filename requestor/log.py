@@ -51,7 +51,6 @@ def get_config(service_config: ServiceConfig) -> tp.Dict[str, tp.Any]:
                 "format": (
                     'time="%(asctime)s" '
                     'level="%(levelname)s" '
-                    'service_name="%(service_name)s" '
                     'logger="%(name)s" '
                     'pid="%(process)d" '
                     'request_id="%(request_id)s" '
@@ -61,7 +60,7 @@ def get_config(service_config: ServiceConfig) -> tp.Dict[str, tp.Any]:
             },
         },
         "filters": {
-            "request_id": {"()": "reports_service.log.RequestIDFilter"},
+            "request_id": {"()": "requestor.log.RequestIDFilter"},
         },
     }
 
