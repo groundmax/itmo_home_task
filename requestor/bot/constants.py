@@ -12,3 +12,7 @@ INCORRECT_DATA_IN_MSG: tp.Final = (
 TEAM_NOT_FOUND_MSG: tp.Final = (
     "Команда от вашего чата не найдена. Скорее всего, вы еще не регистрировались."
 )
+
+TEAM_MODELS_DISPLAY_LIMIT: tp.Final = 20
+
+DATE_FORMAT: tp.Final = "%Y-%m-%d %H:%M:%S"

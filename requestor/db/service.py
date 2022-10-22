@@ -166,11 +166,15 @@ class DBService(BaseModel):
         except ForeignKeyViolationError:
             raise TeamNotFoundError()
 
-    async def get_team_models(self, team_id: UUID) -> tp.List[Model]:
-        query = """
+    async def get_team_last_n_models(self, team_id: UUID, limit: int) -> tp.List[Model]:
+        if limit <= 0:
+            raise ValueError(f"Parameter 'limit' should be positive, but got: {limit}")
+        query = f"""
            SELECT *
            FROM models
            WHERE team_id = $1::UUID
+           ORDER BY created_at DESC
+           LIMIT {limit}
         """
         records = await self.pool.fetch(query, team_id)
         return [Model(**record) for record in records]

@@ -4,6 +4,7 @@ from enum import Enum
 
 from aiogram.types import BotCommand
 from aiogram.utils.markdown import text
+from .constants import TEAM_MODELS_DISPLAY_LIMIT
 
 
 @dataclass
@@ -80,9 +81,12 @@ commands_description = (
         "Вывод информации по добавленным моделям",
         text(
             "С помощью этой команды можно вывести следующую информацию:",
-            "Название, описание (если присутствует) и дату добавления модели."
-            "Если было добавлено более 10 моделей, то выведутся последние 10 по дате добавления",
-            "Время Московское",
+            (
+                "Название, описание (если присутствует) и дату добавления модели по МСК. "
+                f"Если было добавлено более {TEAM_MODELS_DISPLAY_LIMIT} моделей, "
+                f"то выведутся последние {TEAM_MODELS_DISPLAY_LIMIT} по дате добавления "
+                "в обратном хронологическом порядке."
+            ),
             sep="\n",
         ),
     ),
