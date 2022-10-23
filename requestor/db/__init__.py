@@ -4,6 +4,7 @@ from .exceptions import (
     DuplicatedTeamError,
     ModelNotFoundError,
     TeamNotFoundError,
+    TokenNotFoundError,
     TrialNotFoundError,
 )
 from .service import DBService
@@ -15,5 +16,6 @@ __all__ = (
     "TeamNotFoundError",
     "ModelNotFoundError",
     "TrialNotFoundError",
+    "TokenNotFoundError",
     "DBService",
 )

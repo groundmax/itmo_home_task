@@ -145,7 +145,9 @@ def add_model(
     create_db_object: DBObjectCreator,
 ) -> UUID:
     model_id = uuid4()
-    create_db_object(make_db_model(**model_info.dict(), model_id=model_id))
+    create_db_object(
+        make_db_model(**model_info.dict(), model_id=model_id, created_at=datetime.now())
+    )
     return model_id
 
 
