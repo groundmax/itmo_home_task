@@ -236,9 +236,11 @@ class TestModels:
         add_model(model_1_info, create_db_object)
         model_2_info = gen_model_info(team_id, rnd="2")
         add_model(model_2_info, create_db_object)
+        model_3_info = gen_model_info(team_id, rnd="3")
+        add_model(model_3_info, create_db_object)
 
         models = await db_service.get_team_last_n_models(team_id, 2)
-        assert [m.name for m in models] == [model_2_info.name, model_1_info.name]
+        assert [m.name for m in models] == [model_3_info.name, model_2_info.name]
 
     async def test_get_team_last_n_models_when_no_models(
         self, db_service: DBService, create_db_object: DBObjectCreator
