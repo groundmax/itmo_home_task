@@ -8,7 +8,7 @@ jobs:
       DB_URL: postgresql://user:pass@127.0.0.1:5432/db
       GS_URL: ${{ secrets.GS_URL }}
       GS_CREDENTIALS: ${{ secrets.GS_CREDENTIALS }}
-      GS_CREDENTIALS_FILE_NAME: /usr/credentials.json
+      GS_CREDENTIALS_FILE_NAME: /home/runner/credentials.json
       GS_GLOBAL_LEADERBOARD_PAGE_NAME: Global
       GS_GLOBAL_LEADERBOARD_PAGE_MAX_ROWS: 1000
       BOT_TOKEN: BOT_TOKEN
