@@ -33,13 +33,26 @@ class DBConfig(Config):
     db_pool_config: DBPoolConfig
 
 
+class GSConfig(Config):
+    credentials_file_name: str
+    url: str
+    global_leaderboard_page_name: str
+    global_leaderboard_page_max_rows: int
+
+    class Config:
+        case_sensitive = False
+        env_prefix = "GS_"
+
+
 class ServiceConfig(Config):
     log_config: LogConfig
     db_config: DBConfig
+    gs_config: GSConfig
 
 
 def get_config() -> ServiceConfig:
     return ServiceConfig(
         log_config=LogConfig(),
         db_config=DBConfig(db_pool_config=DBPoolConfig()),
+        gs_config=GSConfig(),
     )

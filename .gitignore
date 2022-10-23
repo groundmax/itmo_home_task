@@ -89,3 +89,4 @@ reports/
 .build/
 
 *.env
+credentials.json

@@ -2,12 +2,23 @@ import typing as tp
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
+import gspread
 from pydantic import BaseModel
 
-from requestor.db.models import Base, ModelsTable, TeamsTable, TokensTable, TrialsTable
+from requestor.db.models import (
+    Base,
+    MetricsTable,
+    ModelsTable,
+    TeamsTable,
+    TokensTable,
+    TrialsTable,
+)
 from requestor.models import ModelInfo, TeamInfo, TokenInfo, TrialStatus
 
 DBObjectCreator = tp.Callable[[Base], None]
+
+MAX_WORKSHEET_ROWS = 1000
+MAX_WORKSHEET_COL = "Y"
 
 TOKEN_INFO = TokenInfo(
     token="super_token",
@@ -153,11 +164,42 @@ def add_trial(
     model_id: UUID,
     status: TrialStatus,
     create_db_object: DBObjectCreator,
+    created_at: datetime = datetime(2022, 10, 11),
 ) -> UUID:
     trial_id = uuid4()
-    create_db_object(make_db_trial(trial_id=trial_id, model_id=model_id, status=status))
+    create_db_object(
+        make_db_trial(trial_id=trial_id, model_id=model_id, status=status, created_at=created_at)
+    )
     return trial_id
+
+
+def add_metric(
+    trial_id: UUID,
+    name: str,
+    value: float,
+    create_db_object: DBObjectCreator,
+) -> None:
+    metric = MetricsTable(
+        trial_id=str(trial_id),
+        name=name,
+        value=value,
+    )
+    create_db_object(metric)
 
 
 def gen_model_info(team_id: UUID, rnd: str = "") -> ModelInfo:
     return ModelInfo(team_id=team_id, name=f"some_name_{rnd}", description=f"some_desc_{rnd}")
+
+
+def gen_team_info(rnd: int = 0) -> TeamInfo:
+    return TeamInfo(
+        title=f"title_{rnd}",
+        chat_id=12345 + rnd,
+        api_base_url=f"url_{rnd}",
+        api_key=f"key_{rnd}",
+    )
+
+
+def clear_spreadsheet(ss: gspread.Spreadsheet) -> None:
+    for ws in ss.worksheets():
+        ws.batch_clear([f"A2:{MAX_WORKSHEET_COL}{MAX_WORKSHEET_ROWS}"])

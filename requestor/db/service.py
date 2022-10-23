@@ -5,7 +5,16 @@ from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
-from requestor.models import Metric, Model, ModelInfo, Team, TeamInfo, Trial, TrialStatus
+from requestor.models import (
+    GlobalLeaderboardRow,
+    Metric,
+    Model,
+    ModelInfo,
+    Team,
+    TeamInfo,
+    Trial,
+    TrialStatus,
+)
 from requestor.utils import utc_now
 
 from .exceptions import (
@@ -260,3 +269,33 @@ class DBService(BaseModel):
             raise DuplicatedMetricError(e)
         except ForeignKeyViolationError:
             raise TrialNotFoundError()
+
+    async def get_global_leaderboard(self, metric: str) -> tp.List[GlobalLeaderboardRow]:
+        query = """
+            WITH trials_stat AS (
+                SELECT m.team_id, COUNT(*) AS n_attempts, MAX(t.created_at) AS last_attempt
+                FROM models m
+                    JOIN trials t on m.model_id = t.model_id
+                WHERE t.status = 'success'
+                GROUP BY m.team_id
+            ),
+            best_metrics AS (
+                SELECT m.team_id, MAX(me.value) best_score
+                FROM models m
+                    JOIN trials tr on m.model_id = tr.model_id
+                    JOIN metrics me on tr.trial_id = me.trial_id
+                WHERE me.name = $1::VARCHAR
+                GROUP BY m.team_id
+            )
+            SELECT
+                t.title AS team_name
+                , best_score
+                , COALESCE(n_attempts, 0) AS n_attempts
+                , last_attempt
+            FROM teams t
+                LEFT JOIN trials_stat ts on t.team_id = ts.team_id
+                LEFT JOIN best_metrics bm on t.team_id = bm.team_id
+            ORDER BY best_score DESC NULLS LAST, last_attempt DESC NULLS LAST, t.title ASC
+        """
+        records = await self.pool.fetch(query, metric)
+        return [GlobalLeaderboardRow(**record) for record in records]
