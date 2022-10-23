@@ -6,7 +6,7 @@ from aiogram.utils.markdown import bold, escape_md, text
 
 from requestor.models import Model, TeamInfo
 
-from .constants import DATE_FORMAT
+from .constants import DATETIME_FORMAT
 
 
 # TODO: somehow try generalize this func to reduce duplicate code
@@ -53,7 +53,7 @@ def generate_model_description(model: Model, model_num: int) -> str:
         bold(model_num),
         f"{bold('Название')}: {escape_md(model.name)}",
         f"{bold('Описание')}: {escape_md(description)}",
-        f"{bold('Дата добавления по МСК')}: {escape_md(msc_time.strftime(DATE_FORMAT))}",
+        f"{bold('Дата добавления по МСК')}: {escape_md(msc_time.strftime(DATETIME_FORMAT))}",
         sep="\n",
     )
 

@@ -15,4 +15,4 @@ TEAM_NOT_FOUND_MSG: tp.Final = (
 
 TEAM_MODELS_DISPLAY_LIMIT: tp.Final = 10
 
-DATE_FORMAT: tp.Final = "%Y-%m-%d %H:%M:%S"
+DATETIME_FORMAT: tp.Final = "%Y-%m-%d %H:%M:%S"
