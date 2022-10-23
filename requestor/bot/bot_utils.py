@@ -1,5 +1,4 @@
 import typing as tp
-from datetime import timedelta
 
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
@@ -47,13 +46,13 @@ def parse_msg_with_model_info(
 
 
 def generate_model_description(model: Model, model_num: int) -> str:
-    msc_time = model.created_at + timedelta(hours=3)
-    description = "Отсутствует" if model.description is None else model.description
+    description = model.description or "Отсутствует"
+    created_at = model.created_at.strftime(DATETIME_FORMAT)
     return text(
         bold(model_num),
         f"{bold('Название')}: {escape_md(model.name)}",
         f"{bold('Описание')}: {escape_md(description)}",
-        f"{bold('Дата добавления по МСК')}: {escape_md(msc_time.strftime(DATETIME_FORMAT))}",
+        f"{bold('Дата добавления (UTC)')}: {escape_md(created_at)}",
         sep="\n",
     )
 
