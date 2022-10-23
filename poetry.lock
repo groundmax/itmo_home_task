@@ -1,4 +1,4 @@
-return[[package]]
+[[package]]
 name = "aiogram"
 version = "2.22.2"
 description = "Is a pretty simple and fully asynchronous framework for Telegram Bot API"
