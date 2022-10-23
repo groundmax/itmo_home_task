@@ -50,7 +50,7 @@ def generate_model_description(model: Model, model_num: int) -> str:
     msc_time = model.created_at + timedelta(hours=3)
     description = "Отсутствует" if model.description is None else model.description
     return text(
-        bold(f"Модель #{model_num}"),
+        bold(model_num),
         f"{bold('Название')}: {escape_md(model.name)}",
         f"{bold('Описание')}: {escape_md(description)}",
         f"{bold('Дата добавления по МСК')}: {escape_md(msc_time.strftime(DATE_FORMAT))}",
