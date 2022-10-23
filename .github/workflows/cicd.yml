@@ -11,6 +11,8 @@ jobs:
       GS_CREDENTIALS_FILE_NAME: /usr/credentials.json
       GS_GLOBAL_LEADERBOARD_PAGE_NAME: Global
       GS_GLOBAL_LEADERBOARD_PAGE_MAX_ROWS: 1000
+      BOT_TOKEN: BOT_TOKEN
+      BOT_NAME: BOT_NAME
 
     services:
 

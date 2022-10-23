@@ -33,6 +33,11 @@ class DBConfig(Config):
     db_pool_config: DBPoolConfig
 
 
+class TelegramConfig(Config):
+    bot_token: str
+    bot_name: str
+
+
 class GSConfig(Config):
     credentials_file_name: str
     url: str
@@ -47,6 +52,7 @@ class GSConfig(Config):
 class ServiceConfig(Config):
     log_config: LogConfig
     db_config: DBConfig
+    telegram_config: TelegramConfig
     gs_config: GSConfig
 
 
@@ -54,5 +60,6 @@ def get_config() -> ServiceConfig:
     return ServiceConfig(
         log_config=LogConfig(),
         db_config=DBConfig(db_pool_config=DBPoolConfig()),
+        telegram_config=TelegramConfig(),
         gs_config=GSConfig(),
     )

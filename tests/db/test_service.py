@@ -231,7 +231,7 @@ class TestModels:
         db_teams = db_session.query(TeamsTable).all()
         assert len(db_teams) == 0
 
-    async def test_get_team_models_success(
+    async def test_get_team_last_n_models_success(
         self, db_service: DBService, create_db_object: DBObjectCreator
     ) -> None:
         team_id = add_team(TEAM_INFO, create_db_object)
@@ -239,17 +239,26 @@ class TestModels:
         add_model(model_1_info, create_db_object)
         model_2_info = gen_model_info(team_id, rnd="2")
         add_model(model_2_info, create_db_object)
+        model_3_info = gen_model_info(team_id, rnd="3")
+        add_model(model_3_info, create_db_object)
 
-        models = await db_service.get_team_models(team_id)
-        assert sorted(m.name for m in models) == [model_1_info.name, model_2_info.name]
+        models = await db_service.get_team_last_n_models(team_id, 2)
+        assert [m.name for m in models] == [model_3_info.name, model_2_info.name]
 
-    async def test_get_team_models_when_no_models(
+    async def test_get_team_last_n_models_when_no_models(
         self, db_service: DBService, create_db_object: DBObjectCreator
     ) -> None:
         team_id = add_team(TEAM_INFO, create_db_object)
 
-        models = await db_service.get_team_models(team_id)
+        models = await db_service.get_team_last_n_models(team_id, 1)
         assert len(models) == 0
+
+    async def test_get_team_last_n_models_negative_limit(
+        self, db_service: DBService, create_db_object: DBObjectCreator
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        with pytest.raises(ValueError):
+            await db_service.get_team_last_n_models(team_id, 0)
 
 
 class TestTrials:
