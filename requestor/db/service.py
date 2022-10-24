@@ -284,7 +284,7 @@ class DBService(BaseModel):
                 GROUP BY m.team_id
             ),
             best_metrics AS (
-                SELECT m.team_id, MAX(me.value) best_score
+                SELECT m.team_id, MAX(me.value) AS best_score
                 FROM models m
                     JOIN trials tr on m.model_id = tr.model_id
                     JOIN metrics me on tr.trial_id = me.trial_id
@@ -299,7 +299,7 @@ class DBService(BaseModel):
             FROM teams t
                 LEFT JOIN trials_stat ts on t.team_id = ts.team_id
                 LEFT JOIN best_metrics bm on t.team_id = bm.team_id
-            ORDER BY best_score DESC NULLS LAST, last_attempt DESC NULLS LAST, t.title ASC
+            ORDER BY best_score DESC NULLS LAST, last_attempt ASC NULLS LAST, t.title ASC
         """
         records = await self.pool.fetch(query, metric)
         return [GlobalLeaderboardRow(**record) for record in records]
