@@ -1,13 +1,11 @@
-from datetime import timedelta, datetime
+from datetime import datetime
 
 import gspread
 import pytest
 
 from requestor.google import GSService
-from requestor.google.service import DT_FMT
 from requestor.models import GlobalLeaderboardRow
 from requestor.settings import ServiceConfig
-from requestor.utils import utc_now
 
 pytestmark = pytest.mark.asyncio
 
