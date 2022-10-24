@@ -58,3 +58,10 @@ class Trial(BaseModel):
 class Metric(BaseModel):
     name: str
     value: float
+
+
+class GlobalLeaderboardRow(BaseModel):
+    team_name: str
+    best_score: tp.Optional[float]
+    n_attempts: int
+    last_attempt: tp.Optional[datetime]

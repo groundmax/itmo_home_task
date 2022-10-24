@@ -4,6 +4,7 @@ import typing as tp
 from contextlib import contextmanager
 from pathlib import Path
 
+import gspread
 import pytest
 import sqlalchemy as sa
 from alembic import command as alembic_command
@@ -12,9 +13,10 @@ from sqlalchemy import orm
 
 from requestor.db.models import Base
 from requestor.db.service import DBService
-from requestor.services import make_db_service
+from requestor.google import GSService
+from requestor.services import make_db_service, make_gs_service
 from requestor.settings import ServiceConfig, get_config
-from tests.utils import DBObjectCreator
+from tests.utils import DBObjectCreator, clear_spreadsheet
 
 CURRENT_DIR = Path(__file__).parent
 ALEMBIC_INI_PATH = CURRENT_DIR.parent / "alembic.ini"
@@ -99,3 +101,23 @@ def create_db_object(
         db_session.commit()
 
     return create
+
+
+@pytest.fixture
+def spreadsheet(service_config: ServiceConfig) -> tp.Iterator[gspread.Spreadsheet]:
+    config = service_config.gs_config
+    sa = gspread.service_account(config.credentials_file_name)
+    sheet = sa.open_by_url(config.url)
+    clear_spreadsheet(sheet)
+
+    yield sheet
+
+    clear_spreadsheet(sheet)
+
+
+@pytest.mark.asyncio
+@pytest.fixture
+async def gs_service(service_config: ServiceConfig, spreadsheet: gspread.Spreadsheet) -> GSService:
+    service = make_gs_service(service_config)
+    await service.setup()
+    return service

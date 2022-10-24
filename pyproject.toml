@@ -20,6 +20,8 @@ aiohttp = "^3.7.4"
 asyncpg = "^0.23.0"
 aiogram = "^2.22.2"
 uvloop = "^0.17.0"
+gspread = "^5.6.0"
+asgiref = "^3.5.2"
 
 [tool.poetry.dev-dependencies]
 black = "22.3.0"

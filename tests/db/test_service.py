@@ -1,4 +1,5 @@
 # pylint: disable=attribute-defined-outside-init
+import typing as tp
 from datetime import timedelta
 from uuid import uuid4
 
@@ -16,7 +17,7 @@ from requestor.db.exceptions import (
 )
 from requestor.db.models import MetricsTable, ModelsTable, TeamsTable, TokensTable, TrialsTable
 from requestor.db.service import DBService
-from requestor.models import Metric, ModelInfo, TeamInfo, TrialStatus
+from requestor.models import GlobalLeaderboardRow, Metric, ModelInfo, TeamInfo, TrialStatus
 from requestor.utils import utc_now
 from tests.utils import (
     OTHER_TEAM_INFO,
@@ -24,12 +25,14 @@ from tests.utils import (
     TOKEN_INFO,
     ApproxDatetime,
     DBObjectCreator,
+    add_metric,
     add_model,
     add_team,
     add_token,
     add_trial,
     assert_db_model_equal_to_pydantic_model,
     gen_model_info,
+    gen_team_info,
     make_db_team,
     make_db_trial,
 )
@@ -416,3 +419,135 @@ class TestMetrics:
 
         db_metrics = db_session.query(MetricsTable).all()
         assert len(db_metrics) == 0
+
+
+class TestLeaderboard:
+    def setup(self) -> None:
+        self.now = utc_now()
+        self.now_1 = self.now - timedelta(hours=1)
+        self.now_2 = self.now - timedelta(hours=2)
+        self.now_3 = self.now - timedelta(hours=3)
+
+    @tp.no_type_check
+    def _add_data(self, create_db_object: DBObjectCreator) -> tp.Dict:
+        # 1 - team with 2 models, both have trials
+        # 2 - team with 2 models, only 1st has trials
+        # 3 - team with model with successful trial, but without metrics
+        # 4 - team with model, but without successful trials
+        # 5 - team with model, but without trials
+        # 6 - team without models
+
+        data = {}
+
+        # Add teams
+        for i in range(1, 7):
+            t_info = gen_team_info(i)
+            t_id = add_team(t_info, create_db_object)
+            data[i] = {"id": t_id, "title": t_info.title}
+
+        # Add models
+        for i in (1, 2):
+            data[i]["models"] = {}
+            for j in (1, 2):
+                t_id = data[i]["id"]
+                m_id = add_model(gen_model_info(t_id, rnd=j), create_db_object)
+                data[i]["models"][j] = {"id": m_id}
+        for i in (3, 4, 5):
+            t_id = data[i]["id"]
+            m_id = add_model(gen_model_info(t_id, rnd=1), create_db_object)
+            data[i]["models"] = {1: {"id": m_id}}
+
+        # Add trials
+        for i in (1, 2, 3, 4):
+            models = data[i]["models"]
+            for j, m in models.items():
+                m_id = m["id"]
+                statuses = (TrialStatus.waiting, TrialStatus.started, TrialStatus.failed)
+                status = statuses[(i + j) % 3]
+                tr_id = add_trial(m_id, status, create_db_object, created_at=self.now)
+                m["trials"] = {1: {"id": tr_id, "dt": self.now}}
+
+        model = data[1]["models"][1]
+        tr_1_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now_1)
+        tr_2_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now_3)
+        model["trials"][2] = {"id": tr_1_id, "dt": self.now_1}
+        model["trials"][3] = {"id": tr_2_id, "dt": self.now_3}
+
+        model = data[1]["models"][2]
+        tr_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now_2)
+        model["trials"][2] = {"id": tr_id, "dt": self.now_2}
+
+        model = data[2]["models"][1]
+        tr_1_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now)
+        tr_2_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now_2)
+        model["trials"][2] = {"id": tr_1_id, "dt": self.now}
+        model["trials"][3] = {"id": tr_2_id, "dt": self.now_2}
+
+        model = data[3]["models"][1]
+        tr_id = add_trial(model["id"], TrialStatus.success, create_db_object, self.now_2)
+        model["trials"][2] = {"id": tr_id, "dt": self.now_2}
+
+        # Add metrics
+        tr_id = data[1]["models"][1]["trials"][2]["id"]
+        add_metric(tr_id, "metric_1", 10, create_db_object)
+        add_metric(tr_id, "metric_2", 100, create_db_object)
+        tr_id = data[1]["models"][1]["trials"][3]["id"]
+        add_metric(tr_id, "metric_1", 20, create_db_object)
+
+        tr_id = data[1]["models"][2]["trials"][2]["id"]
+        add_metric(tr_id, "metric_1", 30, create_db_object)
+
+        tr_id = data[2]["models"][1]["trials"][3]["id"]
+        add_metric(tr_id, "metric_1", 50, create_db_object)
+
+        return data
+
+    async def test_global_leaderboard(
+        self,
+        db_service: DBService,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        data = self._add_data(create_db_object)
+
+        actual = await db_service.get_global_leaderboard("metric_1")
+
+        expected = [
+            GlobalLeaderboardRow(
+                team_name=data[2]["title"],
+                best_score=50,
+                n_attempts=2,
+                last_attempt=self.now,
+            ),
+            GlobalLeaderboardRow(
+                team_name=data[1]["title"],
+                best_score=30,
+                n_attempts=3,
+                last_attempt=self.now_1,
+            ),
+            GlobalLeaderboardRow(
+                team_name=data[3]["title"],
+                best_score=None,
+                n_attempts=1,
+                last_attempt=self.now_2,
+            ),
+            GlobalLeaderboardRow(
+                team_name=data[4]["title"],
+                best_score=None,
+                n_attempts=0,
+                last_attempt=None,
+            ),
+            GlobalLeaderboardRow(
+                team_name=data[5]["title"],
+                best_score=None,
+                n_attempts=0,
+                last_attempt=None,
+            ),
+            GlobalLeaderboardRow(
+                team_name=data[6]["title"],
+                best_score=None,
+                n_attempts=0,
+                last_attempt=None,
+            ),
+        ]
+
+        assert actual[: len(expected)] == expected

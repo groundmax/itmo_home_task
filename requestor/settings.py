@@ -38,10 +38,22 @@ class TelegramConfig(Config):
     bot_name: str
 
 
+class GSConfig(Config):
+    credentials_file_name: str
+    url: str
+    global_leaderboard_page_name: str
+    global_leaderboard_page_max_rows: int
+
+    class Config:
+        case_sensitive = False
+        env_prefix = "GS_"
+
+
 class ServiceConfig(Config):
     log_config: LogConfig
     db_config: DBConfig
     telegram_config: TelegramConfig
+    gs_config: GSConfig
 
 
 def get_config() -> ServiceConfig:
@@ -49,4 +61,5 @@ def get_config() -> ServiceConfig:
         log_config=LogConfig(),
         db_config=DBConfig(db_pool_config=DBPoolConfig()),
         telegram_config=TelegramConfig(),
+        gs_config=GSConfig(),
     )
