@@ -194,7 +194,7 @@ class DBService(BaseModel):
             FROM models
             where team_id = $1::UUID and name = $2::VARCHAR
         """
-        is_model_exist = await self.pool.fetch(query, team_id, model_name)
+        is_model_exist = await self.pool.fetchrow(query, team_id, model_name)
         if is_model_exist is not None:
             return True
 
