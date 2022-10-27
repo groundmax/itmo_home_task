@@ -260,6 +260,19 @@ class TestModels:
         with pytest.raises(ValueError):
             await db_service.get_team_last_n_models(team_id, 0)
 
+    async def test_check_if_team_has_model_success(
+        self, db_service: DBService, create_db_object: DBObjectCreator
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        model_1_info = gen_model_info(team_id, rnd="1")
+        add_model(model_1_info, create_db_object)
+
+        is_model_exist_1 = await db_service.check_if_team_has_model(team_id, model_1_info.name)
+        assert is_model_exist_1 is True
+
+        is_model_exist_2 = await db_service.check_if_team_has_model(team_id, "non_existent_name")
+        assert is_model_exist_2 is False
+
 
 class TestTrials:
     @pytest.mark.parametrize("status", (TrialStatus.started, TrialStatus.waiting))

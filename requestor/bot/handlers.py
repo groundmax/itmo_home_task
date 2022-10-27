@@ -19,12 +19,15 @@ from requestor.settings import ServiceConfig
 from .bot_utils import (
     generate_models_description,
     parse_msg_with_model_info,
+    parse_msg_with_request_info,
     parse_msg_with_team_info,
+    validate_today_trial_stats,
 )
 from .commands import BotCommands
 from .constants import (
     AVAILABLE_FOR_UPDATE,
     INCORRECT_DATA_IN_MSG,
+    MODEL_NOT_FOUND_MSG,
     TEAM_MODELS_DISPLAY_LIMIT,
     TEAM_NOT_FOUND_MSG,
 )
@@ -188,9 +191,31 @@ async def show_models_h(message: types.Message, db_service: DBService) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-# TODO: create request handler
 async def request_h(message: types.Message, db_service: DBService) -> None:
-    raise NotImplementedError
+    team = await db_service.get_team_by_chat(message.chat.id)
+
+    if team is None:
+        return await message.reply(TEAM_NOT_FOUND_MSG)
+
+    model_name = parse_msg_with_request_info(message)
+
+    if model_name is None:
+        return await message.reply(INCORRECT_DATA_IN_MSG)
+
+    is_model_exist = await db_service.check_if_team_has_model(team.team_id, model_name)
+
+    if not is_model_exist:
+        return await message.reply(MODEL_NOT_FOUND_MSG)
+
+    today_trials = await db_service.get_team_today_trial_stat(team.team_id)
+
+    try:
+        validate_today_trial_stats(today_trials)
+    except ValueError as e:
+        return await message.reply(e)
+
+    # TODO: add gunner service
+    await message.reply("Пока ничего не запрашиваю")
 
 
 async def other_messages_h(message: types.Message, db_service: DBService) -> None:
@@ -208,6 +233,7 @@ def register_handlers(dp: Dispatcher, db_service: DBService, config: ServiceConf
         BotCommands.show_team.name: show_team_h,
         BotCommands.add_model.name: add_model_h,
         BotCommands.show_models.name: show_models_h,
+        BotCommands.request.name: request_h,
     }
 
     for command, handler in command_handlers_mapping.items():

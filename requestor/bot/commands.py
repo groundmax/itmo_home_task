@@ -5,7 +5,7 @@ from enum import Enum
 from aiogram.types import BotCommand
 from aiogram.utils.markdown import text
 
-from .constants import TEAM_MODELS_DISPLAY_LIMIT
+from .constants import TEAM_MODELS_DISPLAY_LIMIT, TrialLimit
 
 
 @dataclass
@@ -91,8 +91,28 @@ commands_description = (
             sep="\n",
         ),
     ),
-    # TODO: create request command
-    ("request", "Запрос рекомендаций по модели", "Какое-то описание"),
+    (
+        "request",
+        "Запрос рекомендаций по зарегистрированной модели",
+        text(
+            "С помощью этой команды можно запросить рекомендации по модели.",
+            "Для этого на вход принимается следующий аргумент:",
+            (
+                "name - название модели, которая была "
+                "зарегистрирована с помощью команды /add_model"
+            ),
+            "Модель запрашивается по адресу: {api_base_url}/{name}/{user_id}",
+            "Пример использования команды:",
+            "/request lightfm_64",
+            (
+                "Ограничения на запросы в один день: "
+                f"не более {TrialLimit.success} успешных, "
+                f"не более {TrialLimit.failed} неудачных, "
+                f"не более {TrialLimit.waiting} одновременных."
+            ),
+            sep="\n",
+        ),
+    ),
 )
 
 cmd2cls_desc = {args[0]: CommandDescription(*args) for args in commands_description}
@@ -111,6 +131,7 @@ class BotCommands(Enum):
     show_team: CommandDescription = cmd2cls_desc["show_team"]
     add_model: CommandDescription = cmd2cls_desc["add_model"]
     show_models: CommandDescription = cmd2cls_desc["show_models"]
+    request: CommandDescription = cmd2cls_desc["request"]
 
     @classmethod
     def get_bot_commands(cls) -> tp.List[BotCommand]:

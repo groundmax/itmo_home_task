@@ -188,6 +188,18 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id, limit)
         return [Model(**record) for record in records]
 
+    async def check_if_team_has_model(self, team_id: UUID, model_name: str) -> bool:
+        query = """
+            SELECT 1
+            FROM models
+            where team_id = $1::UUID and name = $2::VARCHAR
+        """
+        is_model_exist = await self.pool.fetch(query, team_id, model_name)
+        if is_model_exist is not None:
+            return True
+
+        return False
+
     async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:
         if status.is_finished:
             raise ValueError("New trial cannot be finished")
