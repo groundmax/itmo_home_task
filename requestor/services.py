@@ -1,6 +1,9 @@
 import pandas as pd
 from asyncpg import create_pool
+from pydantic import BaseModel
+from rectools import Columns
 
+from .assessor import AssesorService
 from .db.service import DBService
 from .google import GSService
 from .gunner import GunnerService
@@ -22,4 +25,17 @@ def make_gs_service(config: ServiceConfig) -> GSService:
 
 # TODO: load user_ids and interactions from S3/file/Yandex Disk
 def make_gunner_service() -> GunnerService:
-    return GunnerService(user_ids=[1, 2], interactions=pd.DataFrame([0, 1]))
+    df = pd.read_csv("./venv/interactions.csv", usecols=[Columns.User])
+    return GunnerService(user_ids=df[Columns.User].unique().tolist())
+
+
+def make_assessor_service() -> AssesorService:
+    interactions = pd.read_csv("./venv/interactions.csv")
+    return AssesorService(interactions=interactions)
+
+
+class App(BaseModel):
+    assessor_service: AssesorService
+    db_service: DBService
+    gs_service: GSService
+    gunner_service: GunnerService
