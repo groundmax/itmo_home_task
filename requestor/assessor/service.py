@@ -7,8 +7,7 @@ from rectools.metrics import calc_metrics
 
 from requestor.gunner import UserRecoResponse
 from requestor.models import Metric
-
-from .metrics import METRICS
+from requestor.settings import METRICS
 
 
 class AssesorService(BaseModel):

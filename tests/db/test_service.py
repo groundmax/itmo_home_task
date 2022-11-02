@@ -270,8 +270,12 @@ class TestModels:
         model_1 = await db_service.get_model_by_name(team_id, model_1_info.name)
         assert model_1.name == model_1_info.name
 
-        model_not_exist = await db_service.get_model_by_name(team_id, "non_existent_name")
-        assert model_not_exist is None
+    async def test_get_model_by_name_exception(
+        self, db_service: DBService, create_db_object: DBObjectCreator
+    ) -> None:
+        team_id = add_team(TEAM_INFO, create_db_object)
+        with pytest.raises(ModelNotFoundError):
+            await db_service.get_model_by_name(team_id, "non_existent_name")
 
 
 class TestTrials:

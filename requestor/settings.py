@@ -1,4 +1,8 @@
+import typing as tp
+from enum import Enum
+
 from pydantic import BaseSettings, PostgresDsn
+from rectools.metrics import MAP
 
 
 class Config(BaseSettings):
@@ -63,3 +67,23 @@ def get_config() -> ServiceConfig:
         telegram_config=TelegramConfig(),
         gs_config=GSConfig(),
     )
+
+
+REQUEST_URL_TEMPLATE: tp.Final = "{api_base_url}/{model_name}/{user_id}"
+MAX_RESP_BYTES_SIZE: tp.Final = 10_000
+MAX_N_TIMES_REQUESTED: tp.Final = 3
+RECO_SIZE: tp.Final = 10
+TEAM_MODELS_DISPLAY_LIMIT: tp.Final = 10
+
+MAIN_METRIC: tp.Final = f"MAP@{RECO_SIZE}"
+
+METRICS: tp.Final = {
+    MAIN_METRIC: MAP(k=RECO_SIZE),
+}
+
+
+class TrialLimit(int, Enum):
+    waiting = 5
+    started = 5
+    success = 5
+    failed = 20

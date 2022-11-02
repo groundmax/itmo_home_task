@@ -25,12 +25,12 @@ def make_gs_service(config: ServiceConfig) -> GSService:
 
 # TODO: load user_ids and interactions from S3/file/Yandex Disk
 def make_gunner_service() -> GunnerService:
-    df = pd.read_csv("./venv/interactions.csv", usecols=[Columns.User])
+    df = pd.read_csv("./venv/interactions.csv", usecols=[Columns.User]).head(10**3)
     return GunnerService(user_ids=df[Columns.User].unique().tolist())
 
 
 def make_assessor_service() -> AssesorService:
-    interactions = pd.read_csv("./venv/interactions.csv")
+    interactions = pd.read_csv("./venv/interactions.csv").head(10**3)
     return AssesorService(interactions=interactions)
 
 

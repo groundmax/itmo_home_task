@@ -1,24 +1,28 @@
 import asyncio
+import sys
 import typing as tp
 from asyncio import Task
+from http import HTTPStatus
 
 import aiohttp
 from pydantic import validator
 from pydantic.main import BaseModel
 
-from requestor.assessor import RECO_SIZE
+from requestor.settings import (
+    MAX_N_TIMES_REQUESTED,
+    MAX_RESP_BYTES_SIZE,
+    RECO_SIZE,
+    REQUEST_URL_TEMPLATE,
+)
 
 from .exceptions import (
     DuplicatedRecommendationsError,
-    EmptyRecommendationsError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
 )
 
 START_RANK_FROM: tp.Final = 1
-MAX_RESP_BYTES_SIZE: tp.Final = 10_000
-MAX_N_TIMES_REQUESTED: tp.Final = 3
 
 RecommendationRow = tp.Tuple[int, int, int]
 
@@ -36,26 +40,18 @@ class UserRecoResponse(BaseModel):
     @validator("items")
     @classmethod
     def check_duplicates(cls, value: tp.List[int]) -> tp.List[int]:
-        unique_items = set()
-
-        for item_id in value:
-            if item_id in unique_items:
-                raise DuplicatedRecommendationsError("Recommended items should be unique.")
-
-            unique_items.add(item_id)
+        if len(set(value)) != len(value):
+            raise DuplicatedRecommendationsError("Recommended items should be unique.")
 
         return value
 
     @validator("items")
     @classmethod
     def check_reco_size(cls, value: tp.List[int]) -> tp.List[int]:
-        reco_size = len(value)
-        if reco_size > RECO_SIZE:
+        if len(value) != RECO_SIZE:
             raise RecommendationsLimitSizeError(
-                "There should be no more than " f"{RECO_SIZE} items in recommendations."
+                f"There should be exactly {RECO_SIZE} items in recommendations."
             )
-        if reco_size == 0:
-            raise EmptyRecommendationsError("Recommendations should not be empty.")
 
         return value
 
@@ -78,9 +74,12 @@ class GunnerService(BaseModel):
             if n_times_requested >= MAX_N_TIMES_REQUESTED:
                 raise RequestLimitByUserError(f"User_id `{user_id}` reached request limit")
 
-            tasks.append(
-                asyncio.create_task(session.get(f"{api_base_url}/{model_name}/{user_id}"))
+            url = REQUEST_URL_TEMPLATE.format(
+                api_base_url=api_base_url,
+                model_name=model_name,
+                user_id=user_id,
             )
+            tasks.append(asyncio.create_task(session.get(url)))
         return tasks
 
     def init_queue(self) -> tp.Dict[int, int]:
@@ -96,9 +95,8 @@ class GunnerService(BaseModel):
 
         queue = self.init_queue()
 
-        # TODO: token/Bearer/access_token/private-token wtf?
         if api_token is not None:
-            headers = {"Authorization": f"token {api_token}"}
+            headers = {"Authorization": f"Bearer {api_token}"}
         else:
             headers = None
 
@@ -108,8 +106,8 @@ class GunnerService(BaseModel):
                 responses: tp.List[aiohttp.ClientResponse] = await asyncio.gather(*tasks)
 
                 for response in responses:
-                    # TODO: probably expand possible errors?
-                    if response.status != 200:
+
+                    if response.status != HTTPStatus.OK:
                         _, user_id = response.url.path.rsplit("/", maxsplit=1)
                         queue[int(user_id)] += 1
                         continue
@@ -118,10 +116,10 @@ class GunnerService(BaseModel):
 
                     model_response = UserRecoResponse(**resp)
 
-                    resp_size = len(await response.text())
+                    resp_size = sys.getsizeof(resp)
                     if resp_size > MAX_RESP_BYTES_SIZE:
                         raise HugeResponseSizeError(
-                            "Got too big response size. " f"user {model_response.user_id}."
+                            f"Got too big response size for user `{model_response.user_id}`."
                         )
 
                     del queue[model_response.user_id]

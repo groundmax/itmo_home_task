@@ -5,7 +5,12 @@ from enum import Enum
 from aiogram.types import BotCommand
 from aiogram.utils.markdown import text
 
-from .constants import TEAM_MODELS_DISPLAY_LIMIT, TrialLimit
+from requestor.settings import (
+    RECO_SIZE,
+    REQUEST_URL_TEMPLATE,
+    TEAM_MODELS_DISPLAY_LIMIT,
+    TrialLimit,
+)
 
 
 @dataclass
@@ -67,7 +72,7 @@ commands_description = (
             "description - опционально, более подробное описание модели",
             "Пример использования для добавления модели:",
             "/add_model lightfm_64",
-            "Далее модели будут запрашиваться по адресу: {api_base_url}/{name}/{user_id}",
+            f"Далее модели будут запрашиваться по адресу: {REQUEST_URL_TEMPLATE}",
             (
                 "То есть адрес для запроса выглядит, например, так: "
                 "http://myapi.ru/api/v1/lightfm_64/178"
@@ -95,13 +100,13 @@ commands_description = (
         "request",
         "Запрос рекомендаций по зарегистрированной модели",
         text(
-            "С помощью этой команды можно запросить рекомендации по модели.",
+            "С помощью этой команды можно запустить опрос вашего сервиса.",
             "Для этого на вход принимается следующий аргумент:",
             (
                 "name - название модели, которая была "
                 "зарегистрирована с помощью команды /add_model"
             ),
-            "Модель запрашивается по адресу: {api_base_url}/{name}/{user_id}",
+            f"Модель запрашивается по адресу: {REQUEST_URL_TEMPLATE}",
             "Пример использования команды:",
             "/request lightfm_64",
             (
@@ -110,6 +115,7 @@ commands_description = (
                 f"не более {TrialLimit.failed} неудачных, "
                 f"не более {TrialLimit.waiting} одновременных."
             ),
+            f"Каждый юзер должен иметь ровно: {RECO_SIZE} рекоммендаций.",
             sep="\n",
         ),
     ),

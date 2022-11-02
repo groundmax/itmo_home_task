@@ -7,6 +7,7 @@ from requestor.log import setup_logging
 async def main():
     db_service = make_db_service(config)
     gs_service = make_gs_service(config)
+
     gunner_service = make_gunner_service()
     assessor_service = make_assessor_service()
 
@@ -22,6 +23,7 @@ async def main():
 
     await bot.set_my_commands(commands=BotCommands.get_bot_commands())
     await db_service.setup()
+    await gs_service.setup()
     try:
         await dp.start_polling()
     finally:

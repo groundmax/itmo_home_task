@@ -1,7 +1,3 @@
-class EmptyRecommendationsError(Exception):
-    pass
-
-
 class DuplicatedRecommendationsError(Exception):
     pass
 

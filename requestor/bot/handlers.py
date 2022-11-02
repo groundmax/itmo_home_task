@@ -11,10 +11,16 @@ from requestor.db import (
     TeamNotFoundError,
     TokenNotFoundError,
 )
+from requestor.gunner import (
+    DuplicatedRecommendationsError,
+    HugeResponseSizeError,
+    RecommendationsLimitSizeError,
+    RequestLimitByUserError,
+)
 from requestor.log import app_logger
 from requestor.models import ModelInfo, TeamInfo, Trial, TrialStatus
 from requestor.services import App
-from requestor.settings import ServiceConfig
+from requestor.settings import MAIN_METRIC, TEAM_MODELS_DISPLAY_LIMIT, ServiceConfig
 
 from .bot_utils import (
     generate_models_description,
@@ -28,7 +34,6 @@ from .constants import (
     AVAILABLE_FOR_UPDATE,
     INCORRECT_DATA_IN_MSG,
     MODEL_NOT_FOUND_MSG,
-    TEAM_MODELS_DISPLAY_LIMIT,
     TEAM_NOT_FOUND_MSG,
 )
 
@@ -201,10 +206,9 @@ async def request_h(message: types.Message, app: App) -> None:
 
     if model_name is None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
-
-    model = await app.db_service.get_model_by_name(team.team_id, model_name)
-
-    if model is None:
+    try:
+        model = await app.db_service.get_model_by_name(team.team_id, model_name)
+    except ModuleNotFoundError:
         return await message.reply(MODEL_NOT_FOUND_MSG)
 
     today_trials = await app.db_service.get_team_today_trial_stat(team.team_id)
@@ -218,15 +222,36 @@ async def request_h(message: types.Message, app: App) -> None:
     trial: Trial = await app.db_service.add_trial(
         model_id=model.model_id, status=TrialStatus.waiting
     )
-    raw_recos = await app.gunner_service.get_recos(
-        api_base_url=team.api_base_url,
-        model_name=model_name,
-        api_token=team.api_key,
-    )
+
+    try:
+        raw_recos = await app.gunner_service.get_recos(
+            api_base_url=team.api_base_url,
+            model_name=model_name,
+            api_token=team.api_key,
+        )
+        reply, status = "Обстрел сервиса прошел успешно!", TrialStatus.success
+    except (
+        HugeResponseSizeError,
+        RecommendationsLimitSizeError,
+        RequestLimitByUserError,
+        DuplicatedRecommendationsError,
+    ) as e:
+        reply, status = e, TrialStatus.failed  # type: ignore
+
+    await app.db_service.update_trial_status(trial.trial_id, status=status)
+
+    if status != TrialStatus.success:
+        return await message.reply(reply)
+
+    await message.reply(reply)
+
     prepared_recos = app.assessor_service.prepare_recos(raw_recos)
     metrics_data = app.assessor_service.estimate_recos(prepared_recos)
-    app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
-    await message.reply("Not Final Version")
+    await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
+
+    rows = await app.db_service.get_global_leaderboard(MAIN_METRIC)
+    await app.gs_service.update_global_leaderboard(rows)
+    await message.reply("Лидерборд обновлен, можете смотреть результаты.")
 
 
 async def other_messages_h(message: types.Message, app: App) -> None:

@@ -4,8 +4,9 @@ from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
 
 from requestor.models import Model, TeamInfo, TrialStatus
+from requestor.settings import TrialLimit
 
-from .constants import DATETIME_FORMAT, TrialLimit
+from .constants import DATETIME_FORMAT
 
 
 # TODO: somehow try generalize this func to reduce duplicate code
@@ -57,19 +58,19 @@ def parse_msg_with_request_info(message: types.Message) -> tp.Optional[str]:
 
 def validate_today_trial_stats(trial_stats: tp.Dict[TrialStatus, int]) -> None:
 
-    if trial_stats[TrialStatus.success] >= TrialLimit.success:
+    if trial_stats.get(TrialStatus.success, 0) >= TrialLimit.success:
         raise ValueError(
             f"Вы уже совершили {TrialLimit.success} успешных попыток. "
             "Пожалуйста, подождите следующего дня."
         )
 
-    if trial_stats[TrialStatus.waiting] >= TrialLimit.waiting:
+    if trial_stats.get(TrialStatus.waiting, 0) >= TrialLimit.waiting:
         raise ValueError(
             f"Сейчас в очереди на проверку уже есть {TrialLimit.waiting} моделей. "
             "Пожалуйста, подождите пока завершаться проверки этих моделей."
         )
 
-    if trial_stats[TrialStatus.failed] >= TrialLimit.failed:
+    if trial_stats.get(TrialStatus.failed, 0) >= TrialLimit.failed:
         raise ValueError(
             f"Вы уже совершили {TrialLimit.failed} неудачных попыток. "
             "Пожалуйста, подождите следующего дня."

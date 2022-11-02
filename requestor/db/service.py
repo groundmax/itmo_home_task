@@ -188,17 +188,17 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id, limit)
         return [Model(**record) for record in records]
 
-    async def get_model_by_name(self, team_id: UUID, model_name: str) -> tp.Optional[Model]:
+    async def get_model_by_name(self, team_id: UUID, model_name: str) -> Model:
         query = """
             SELECT *
             FROM models
             where team_id = $1::UUID and name = $2::VARCHAR
         """
         record = await self.pool.fetchrow(query, team_id, model_name)
-        if record is not None:
-            return Model(**record)
+        if record is None:
+            raise ModelNotFoundError(f"Model {model_name} not found")
 
-        return None
+        return Model(**record)
 
     async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:
         if status.is_finished:
