@@ -1,3 +1,3 @@
-from .service import AssesorService
+from .service import AssessorService
 
-__all__ = ("AssesorService",)
+__all__ = ("AssessorService",)

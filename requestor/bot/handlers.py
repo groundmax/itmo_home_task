@@ -20,7 +20,7 @@ from requestor.gunner import (
 from requestor.log import app_logger
 from requestor.models import ModelInfo, TeamInfo, Trial, TrialStatus
 from requestor.services import App
-from requestor.settings import MAIN_METRIC, TEAM_MODELS_DISPLAY_LIMIT, ServiceConfig
+from requestor.settings import ServiceConfig, config
 
 from .bot_utils import (
     generate_models_description,
@@ -123,7 +123,7 @@ async def update_team_h(message: types.Message, app: App) -> None:
         await app.db_service.update_team(current_team_info.team_id, updated_team_info)
         reply = text(
             "Данные по вашей команде успешно обновлены.",
-            "Воспользуйтесь командой /show_team.",
+            "Воспользуйтесь командой /show_team",
         )
     except DuplicatedTeamError as e:
         if e.column == "api_base_url":
@@ -186,7 +186,9 @@ async def show_models_h(message: types.Message, app: App) -> None:
     if team is None:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
-    models = await app.db_service.get_team_last_n_models(team.team_id, TEAM_MODELS_DISPLAY_LIMIT)
+    models = await app.db_service.get_team_last_n_models(
+        team.team_id, config.telegram_config.team_models_display_limit
+    )
 
     if len(models) == 0:
         reply = "У вашей команды пока еще нет добавленных моделей"
@@ -245,11 +247,11 @@ async def request_h(message: types.Message, app: App) -> None:
 
     await message.reply(reply)
 
-    prepared_recos = app.assessor_service.prepare_recos(raw_recos)
-    metrics_data = app.assessor_service.estimate_recos(prepared_recos)
+    prepared_recos = await app.assessor_service.prepare_recos(raw_recos)
+    metrics_data = await app.assessor_service.estimate_recos(prepared_recos)
     await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
 
-    rows = await app.db_service.get_global_leaderboard(MAIN_METRIC)
+    rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)
     await app.gs_service.update_global_leaderboard(rows)
     await message.reply("Лидерборд обновлен, можете смотреть результаты.")
 
@@ -258,8 +260,8 @@ async def other_messages_h(message: types.Message, app: App) -> None:
     await message.reply("Я не поддерживаю Inline команды. Пожалуйста, воспользуйтесь /help.")
 
 
-def register_handlers(dp: Dispatcher, app: App, config: ServiceConfig) -> None:
-    bot_name = config.telegram_config.bot_name
+def register_handlers(dp: Dispatcher, app: App, service_config: ServiceConfig) -> None:
+    bot_name = service_config.telegram_config.bot_name
     # TODO: probably automate this dict with getting attributes from globals
     command_handlers_mapping = {
         BotCommands.start.name: start_h,
