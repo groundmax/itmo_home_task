@@ -3,10 +3,13 @@ import asyncio
 from aiogram.utils.executor import start_webhook
 
 from requestor.bot import dp, register_handlers, bot, BotCommands
-from requestor.events import make_on_startup_handler, make_on_shutdown_handler
-from requestor.services import App
-from requestor.settings import config
+from requestor.services import make_db_service, make_gs_service, make_assessor_service, make_gunner_service, App
+from requestor.settings import config, StorageServiceConfig
 from requestor.log import setup_logging
+from requestor.utils import get_interactions_from_s3
+import io
+import pandas as pd
+
 
 
 async def main():

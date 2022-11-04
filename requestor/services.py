@@ -24,16 +24,13 @@ def make_gs_service(config: ServiceConfig) -> GSService:
     return GSService(**config.gs_config.dict())
 
 
-# TODO: load user_ids and interactions from S3/file/Yandex Disk
-def make_gunner_service(config: ServiceConfig) -> GunnerService:
-    df = pd.read_csv("./venv/interactions.csv", usecols=[Columns.User]).head(10**3)
-    users = df[Columns.User].unique().tolist()
+def make_gunner_service(config: ServiceConfig, interactions: pd.DataFrame) -> GunnerService:
+    users = interactions[Columns.User].unique().tolist()
     users_batches = chunkify(users, config.gunner_config.user_request_batch_size)
     return GunnerService(users_batches=users_batches)
 
 
-def make_assessor_service() -> AssessorService:
-    interactions = pd.read_csv("./venv/interactions.csv").head(10**3)
+def make_assessor_service(interactions: pd.DataFrame) -> AssessorService:
     return AssessorService(interactions=interactions)
 
 
