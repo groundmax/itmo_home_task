@@ -1,34 +1,35 @@
 import asyncio
+
+from aiogram.utils.executor import start_webhook
+
 from requestor.bot import dp, register_handlers, bot, BotCommands
-from requestor.services import make_db_service, make_gs_service, make_assessor_service, make_gunner_service, App
+from requestor.events import make_on_startup_handler, make_on_shutdown_handler
+from requestor.services import App
 from requestor.settings import config
 from requestor.log import setup_logging
 
 
 async def main():
-    db_service = make_db_service(config)
-    gs_service = make_gs_service(config)
-
-    gunner_service = make_gunner_service(config)
-    assessor_service = make_assessor_service()
-
-    app = App(
-        assessor_service=assessor_service,
-        db_service=db_service,
-        gs_service=gs_service,
-        gunner_service=gunner_service
-    )
+    setup_logging(config)
+    app = App.from_config(config)
 
     register_handlers(dp, app, config)
-    setup_logging(config)
 
     await bot.set_my_commands(commands=BotCommands.get_bot_commands())
-    await db_service.setup()
-    await gs_service.setup()
-    try:
-        await dp.start_polling()
-    finally:
-        await db_service.cleanup()
+
+    webhook_path_pattern = config.telegram_config.webhook_path_pattern
+    webhook_path = webhook_path_pattern.format(bot_token=config.telegram_config.bot_token)
+    webhook_url = config.telegram_config.webhook_host + webhook_path
+
+    start_webhook(
+        dispatcher=dp,
+        webhook_path=webhook_path,
+        skip_updates=True,
+        on_startup=make_on_startup_handler(bot, app, webhook_url),
+        on_shutdown=make_on_shutdown_handler(bot, app),
+        host=config.telegram_config.host,
+        port=config.telegram_config.port,
+    )
 
 
 if __name__ == "__main__":

@@ -42,3 +42,25 @@ class App(BaseModel):
     db_service: DBService
     gs_service: GSService
     gunner_service: GunnerService
+
+    @classmethod
+    def from_config(cls, config: ServiceConfig) -> "App":
+        db_service = make_db_service(config)
+        gs_service = make_gs_service(config)
+
+        gunner_service = make_gunner_service(config)
+        assessor_service = make_assessor_service()
+
+        return App(
+            assessor_service=assessor_service,
+            db_service=db_service,
+            gs_service=gs_service,
+            gunner_service=gunner_service
+        )
+
+    async def setup(self) -> None:
+        await self.db_service.setup()
+        await self.gs_service.setup()
+
+    async def cleanup(self) -> None:
+        await self.db_service.cleanup()
