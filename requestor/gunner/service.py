@@ -4,9 +4,7 @@ import typing as tp
 from asyncio import Task
 from http import HTTPStatus
 
-from aiohttp import ClientResponse, ClientSession
-from aiohttp.client import _RequestContextManager
-from asgiref.sync import sync_to_async
+from aiohttp import ClientSession
 from pydantic import validator
 from pydantic.main import BaseModel
 
@@ -22,7 +20,7 @@ from .exceptions import (
 START_RANK_FROM: tp.Final = 1
 
 RecommendationRow = tp.Tuple[int, int, int]
-UserRequest = tp.Tuple[int, _RequestContextManager]
+UserResponseInfo = tp.Tuple[int, tp.Dict[str, tp.Any], int]
 
 
 class UserRecoResponse(BaseModel):
@@ -61,8 +59,15 @@ class GunnerService(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def request(self, session: ClientSession, request_url: str, user_id: int) -> UserRequest:
-        return user_id, session.get(request_url)
+    async def request(
+        self,
+        session: ClientSession,
+        request_url: str,
+        user_id: int,
+    ) -> UserResponseInfo:
+        async with session.get(request_url) as response:
+            resp = await response.json()
+            return user_id, resp, response.status
 
     def get_tasks(
         self,
@@ -81,8 +86,8 @@ class GunnerService(BaseModel):
                 model_name=model_name,
                 user_id=user_id,
             )
-            async_request = sync_to_async(self.request)(session, url, user_id)
-            tasks.append(asyncio.create_task(async_request))
+
+            tasks.append(asyncio.create_task(self.request(session, url, user_id)))
         return tasks
 
     def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, int]:
@@ -106,24 +111,21 @@ class GunnerService(BaseModel):
                 queue = self.init_queue(users_batch)
                 while queue:
                     tasks = self.get_tasks(queue, session, api_base_url, model_name)
-                    responses: tp.List[UserRequest] = await asyncio.gather(*tasks)
+                    responses: tp.List[UserResponseInfo] = await asyncio.gather(*tasks)
 
-                    for user_id, response_ in responses:
-                        response: ClientResponse = await response_
+                    for user_id, response, status in responses:
 
-                        if response.status != HTTPStatus.OK:
+                        if status != HTTPStatus.OK:
                             queue[user_id] += 1
                             continue
 
-                        resp = await response.json()
-
-                        model_response = UserRecoResponse(**resp)
-
-                        resp_size = sys.getsizeof(resp)
+                        resp_size = sys.getsizeof(response)
                         if resp_size > config.gunner_config.max_resp_bytes_size:
                             raise HugeResponseSizeError(
                                 f"Got too big response size for user `{user_id}`."
                             )
+
+                        model_response = UserRecoResponse(**response)
 
                         del queue[user_id]
                         results.append(model_response)
