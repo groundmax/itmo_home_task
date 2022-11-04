@@ -26,7 +26,7 @@ jobs:
         with:
           registry: cr.yandex
           username: json_key
-          password: ${{ secrets.YC_CR_PUSHER_AUTH_KEY }}
+          password: ${{ secrets.YC_CR_PUSHER_KEY }}
 
       - name: Set up Docker Buildx
         id: buildx
@@ -49,8 +49,8 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           push: true
           tags: |
-            cr.yandex/${{ secrets.YC_TEST_CR_ID }}/${{ env.IMAGE }}:${{ env.SHORT_SHA }}
-            cr.yandex/${{ secrets.YC_TEST_CR_ID }}/${{ env.IMAGE }}:latest
+            cr.yandex/${{ secrets.YC_CR_ID }}/${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+            cr.yandex/${{ secrets.YC_CR_ID }}/${{ env.IMAGE }}:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
