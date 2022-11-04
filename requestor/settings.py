@@ -45,7 +45,7 @@ class TelegramConfig(Config):
     webhook_host: str
     port: int
     host: str = "0.0.0.0"
-    webhook_url_pattern: "{webhook_host}/webhook/{bot_token}"
+    webhook_path_pattern: str = "/webhook/{bot_token}"
     team_models_display_limit: int = 10
 
 
