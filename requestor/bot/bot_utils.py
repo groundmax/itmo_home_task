@@ -3,7 +3,8 @@ import typing as tp
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
 
-from requestor.models import Model, TeamInfo
+from requestor.models import Model, TeamInfo, TrialStatus
+from requestor.settings import TrialLimit
 
 from .constants import DATETIME_FORMAT
 
@@ -43,6 +44,37 @@ def parse_msg_with_model_info(
         return name, description
     except NameError:
         return None, None
+
+
+def parse_msg_with_request_info(message: types.Message) -> tp.Optional[str]:
+    args = message.get_args().split()
+    n_args = len(args)
+
+    if n_args == 1:
+        return args[0]
+
+    return None
+
+
+def validate_today_trial_stats(trial_stats: tp.Dict[TrialStatus, int]) -> None:
+
+    if trial_stats.get(TrialStatus.success, 0) >= TrialLimit.success:
+        raise ValueError(
+            f"Вы уже совершили {TrialLimit.success} успешных попыток. "
+            "Пожалуйста, подождите следующего дня."
+        )
+
+    if trial_stats.get(TrialStatus.waiting, 0) >= TrialLimit.waiting:
+        raise ValueError(
+            f"Сейчас в очереди на проверку уже есть {TrialLimit.waiting} моделей. "
+            "Пожалуйста, подождите пока завершаться проверки этих моделей."
+        )
+
+    if trial_stats.get(TrialStatus.failed, 0) >= TrialLimit.failed:
+        raise ValueError(
+            f"Вы уже совершили {TrialLimit.failed} неудачных попыток. "
+            "Пожалуйста, подождите следующего дня."
+        )
 
 
 def generate_model_description(model: Model, model_num: int) -> str:
