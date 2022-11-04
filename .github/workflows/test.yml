@@ -14,6 +14,15 @@ jobs:
       GS_GLOBAL_LEADERBOARD_PAGE_MAX_ROWS: 1000
       BOT_TOKEN: BOT_TOKEN
       BOT_NAME: BOT_NAME
+      WEBHOOK_HOST: some_host
+      PORT: 1111
+      RUN_MIGRATIONS: FALSE
+      S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
+      S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+      S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+      S3_REGION: ${{ secrets.S3_REGION }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      S3_KEY: ${{ secrets.S3_KEY }}
 
     services:
 
