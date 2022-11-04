@@ -43,7 +43,7 @@ class TelegramConfig(Config):
     bot_name: str
     webhook_host: str
     port: int
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # nosec
     webhook_path_pattern: str = "/webhook/{bot_token}"
     team_models_display_limit: int = 10
 
@@ -85,13 +85,17 @@ class GunnerConfig(Config):
     failed_trial_limit: int = 20
 
 
-class StorageServiceConfig(Config):
+class S3Config(Config):
     endpoint_url: str
     access_key_id: str
     secret_access_key: str
     region: str
     bucket: str
     key: str
+
+    class Config:
+        case_sensitive = False
+        env_prefix = "S3_"
 
 
 class ServiceConfig(Config):
@@ -101,6 +105,7 @@ class ServiceConfig(Config):
     gs_config: GSConfig
     assessor_config: AssessorConfig
     gunner_config: GunnerConfig
+    s3_config: S3Config
 
 
 def get_config() -> ServiceConfig:
@@ -111,6 +116,7 @@ def get_config() -> ServiceConfig:
         gs_config=GSConfig(),
         assessor_config=AssessorConfig(),
         gunner_config=GunnerConfig(),
+        s3_config=S3Config(),
     )
 
 

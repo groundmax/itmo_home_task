@@ -7,7 +7,7 @@ from tempfile import TemporaryFile
 import boto3
 import pandas as pd
 
-from requestor.settings import StorageServiceConfig
+from requestor.settings import S3Config
 
 TZ_UTC = datetime.timezone.utc
 
@@ -33,23 +33,23 @@ def chunkify(array: tp.List[T], chunk_size: int) -> tp.List[tp.List[T]]:
     return chunks
 
 
-def download_file_body(service_config: StorageServiceConfig) -> bytes:
+def download_file_body(s3_config: S3Config) -> bytes:
     client = boto3.client(
         service_name="s3",
-        endpoint_url=service_config.endpoint_url,
-        region_name=service_config.region,
-        aws_access_key_id=service_config.access_key_id,
-        aws_secret_access_key=service_config.secret_access_key,
+        endpoint_url=s3_config.endpoint_url,
+        region_name=s3_config.region,
+        aws_access_key_id=s3_config.access_key_id,
+        aws_secret_access_key=s3_config.secret_access_key,
     )
     with TemporaryFile("w+b") as f:
-        client.download_fileobj(service_config.bucket, service_config.key, f)
+        client.download_fileobj(s3_config.bucket, s3_config.key, f)
         f.seek(0)
         body = f.read()
     return body
 
 
-def get_interactions_from_s3(service_config: StorageServiceConfig) -> pd.DataFrame:
-    body = download_file_body(service_config)
+def get_interactions_from_s3(s3_config: S3Config) -> pd.DataFrame:
+    body = download_file_body(s3_config)
     interactions = pd.read_csv(io.BytesIO(body))
 
     return interactions
