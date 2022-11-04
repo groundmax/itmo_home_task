@@ -49,7 +49,7 @@ class TelegramConfig(Config):
 
 
 class GSConfig(Config):
-    credentials_file_name: str
+    credentials: str
     url: str
     global_leaderboard_page_name: str
     global_leaderboard_page_max_rows: int

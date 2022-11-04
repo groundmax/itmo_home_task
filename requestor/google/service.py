@@ -1,4 +1,5 @@
 import typing as tp
+from tempfile import NamedTemporaryFile
 
 import gspread
 from asgiref.sync import sync_to_async
@@ -10,7 +11,7 @@ DT_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 class GSService(BaseModel):
-    credentials_file_name: str
+    credentials: str
     url: str
     global_leaderboard_page_name: str
     global_leaderboard_page_max_rows: int
@@ -24,7 +25,10 @@ class GSService(BaseModel):
         return await sync_to_async(self._setup)()
 
     def _setup(self) -> None:
-        sa = gspread.service_account(self.credentials_file_name)
+        with NamedTemporaryFile("w+") as f:
+            f.write(self.credentials)
+            f.seek(0)
+            sa = gspread.service_account(f.name)
         self.sheet = sa.open_by_url(self.url)
 
     def _check_setup(self) -> None:
