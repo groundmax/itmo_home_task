@@ -1,4 +1,5 @@
-name: CICD
+name: Test
+
 on: [push]
 
 jobs:
