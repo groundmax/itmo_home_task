@@ -5,7 +5,7 @@ from enum import Enum
 from aiogram.types import BotCommand
 from aiogram.utils.markdown import text
 
-from .constants import TEAM_MODELS_DISPLAY_LIMIT, TrialLimit
+from requestor.settings import TrialLimit, config
 
 
 @dataclass
@@ -67,7 +67,10 @@ commands_description = (
             "description - опционально, более подробное описание модели",
             "Пример использования для добавления модели:",
             "/add_model lightfm_64",
-            "Далее модели будут запрашиваться по адресу: {api_base_url}/{name}/{user_id}",
+            (
+                "Далее модели будут запрашиваться по адресу: "
+                f"{config.gunner_config.request_url_template}"
+            ),
             (
                 "То есть адрес для запроса выглядит, например, так: "
                 "http://myapi.ru/api/v1/lightfm_64/178"
@@ -84,8 +87,10 @@ commands_description = (
             "С помощью этой команды можно вывести следующую информацию:",
             (
                 "Название, описание (если присутствует) и дату добавления модели по UTC. "
-                f"Если было добавлено более {TEAM_MODELS_DISPLAY_LIMIT} моделей, "
-                f"то выведутся последние {TEAM_MODELS_DISPLAY_LIMIT} по дате добавления "
+                "Если было добавлено более "
+                f"{config.telegram_config.team_models_display_limit} моделей, "
+                "то выведутся последние "
+                f"{config.telegram_config.team_models_display_limit} по дате добавления "
                 "в обратном хронологическом порядке."
             ),
             sep="\n",
@@ -95,13 +100,13 @@ commands_description = (
         "request",
         "Запрос рекомендаций по зарегистрированной модели",
         text(
-            "С помощью этой команды можно запросить рекомендации по модели.",
+            "С помощью этой команды можно запустить опрос вашего сервиса.",
             "Для этого на вход принимается следующий аргумент:",
             (
                 "name - название модели, которая была "
                 "зарегистрирована с помощью команды /add_model"
             ),
-            "Модель запрашивается по адресу: {api_base_url}/{name}/{user_id}",
+            ("Модель запрашивается по адресу: " f"{config.gunner_config.request_url_template}"),
             "Пример использования команды:",
             "/request lightfm_64",
             (
@@ -110,6 +115,7 @@ commands_description = (
                 f"не более {TrialLimit.failed} неудачных, "
                 f"не более {TrialLimit.waiting} одновременных."
             ),
+            f"Каждый юзер должен иметь ровно: {config.assessor_config.reco_size} рекоммендаций.",
             sep="\n",
         ),
     ),
