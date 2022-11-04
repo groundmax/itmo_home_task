@@ -21,7 +21,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 COPY --from=build dist dist
 COPY --from=build migrations migrations
-COPY --from=build alembic.ini main.py ./
+COPY --from=build alembic.ini main.py entrypoint.sh ./
 
 
 RUN pip install -U --no-cache-dir pip dist/*.whl && \

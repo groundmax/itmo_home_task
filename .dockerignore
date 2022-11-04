@@ -3,6 +3,7 @@
 !requestor
 !alembic.ini
 !main.py
+!entrypoint.sh
 !poetry.lock
 !pyproject.toml
 !README.md
