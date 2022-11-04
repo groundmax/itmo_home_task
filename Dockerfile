@@ -27,4 +27,5 @@ COPY --from=build alembic.ini main.py ./
 RUN pip install -U --no-cache-dir pip dist/*.whl && \
     rm -rf dist
 
-CMD ["python", "main.py"]
+RUN chmod +x entrypoint.sh
+CMD ["./entrypoint.sh"]
