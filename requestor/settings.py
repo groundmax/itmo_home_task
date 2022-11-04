@@ -36,6 +36,10 @@ class DBConfig(Config):
 class TelegramConfig(Config):
     bot_token: str
     bot_name: str
+    webhook_host: str
+    port: int
+    host: str = "0.0.0.0"
+    webhook_url_pattern: "{webhook_host}/webhook/{bot_token}"
 
 
 class GSConfig(Config):
