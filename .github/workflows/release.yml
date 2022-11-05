@@ -5,9 +5,10 @@ on:
     types:
       - created
   workflow_dispatch:
+  push:
 
 env:
-  IMAGE: requestor_bot
+  IMAGE: requestor
 
 
 jobs:
