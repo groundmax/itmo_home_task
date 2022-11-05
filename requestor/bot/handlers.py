@@ -12,6 +12,7 @@ from requestor.db import (
     TokenNotFoundError,
 )
 from requestor.gunner import (
+    AuthorizationError,
     DuplicatedRecommendationsError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
@@ -101,11 +102,12 @@ async def register_team_h(message: types.Message, app: App) -> None:
 
 
 async def update_team_h(message: types.Message, app: App) -> None:
-    current_team_info = await app.db_service.get_team_by_chat(message.chat.id)
+    try:
+        current_team_info = await app.db_service.get_team_by_chat(message.chat.id)
+    except TeamNotFoundError:
+        return await message.reply(TEAM_NOT_FOUND_MSG)
 
     # TODO: think of way to generalize this pattern to reduce duplicate code
-    if current_team_info is None:
-        return await message.reply(TEAM_NOT_FOUND_MSG)
 
     try:
         update_field, update_value = message.get_args().split()
@@ -114,6 +116,9 @@ async def update_team_h(message: types.Message, app: App) -> None:
 
     if update_field not in AVAILABLE_FOR_UPDATE:
         return await message.reply(INCORRECT_DATA_IN_MSG)
+
+    if update_field == "api_base_url" and update_value.endswith("/"):
+        update_value == update_value[:-1]  # pylint: disable=pointless-statement
 
     updated_team_info = TeamInfo(**current_team_info.dict())
 
@@ -150,7 +155,7 @@ async def show_team_h(message: types.Message, app: App) -> None:
             sep="\n",
         )
     except TeamNotFoundError:
-        reply = TEAM_NOT_FOUND_MSG
+        reply = escape_md(TEAM_NOT_FOUND_MSG)
 
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
@@ -161,9 +166,9 @@ async def add_model_h(message: types.Message, app: App) -> None:
     if name is None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
-    team = await app.db_service.get_team_by_chat(message.chat.id)
-
-    if team is None:
+    try:
+        team = await app.db_service.get_team_by_chat(message.chat.id)
+    except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
     try:
@@ -181,9 +186,9 @@ async def add_model_h(message: types.Message, app: App) -> None:
 
 
 async def show_models_h(message: types.Message, app: App) -> None:
-    team = await app.db_service.get_team_by_chat(message.chat.id)
-
-    if team is None:
+    try:
+        team = await app.db_service.get_team_by_chat(message.chat.id)
+    except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
     models = await app.db_service.get_team_last_n_models(
@@ -198,16 +203,17 @@ async def show_models_h(message: types.Message, app: App) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def request_h(message: types.Message, app: App) -> None:
-    team = await app.db_service.get_team_by_chat(message.chat.id)
-
-    if team is None:
+async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
+    try:
+        team = await app.db_service.get_team_by_chat(message.chat.id)
+    except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
     model_name = parse_msg_with_request_info(message)
 
     if model_name is None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
+
     try:
         model = await app.db_service.get_model_by_name(team.team_id, model_name)
     except ModuleNotFoundError:
@@ -220,10 +226,11 @@ async def request_h(message: types.Message, app: App) -> None:
     except ValueError as e:
         return await message.reply(e)
 
-    # TODO: Finalize gunner service
     trial: Trial = await app.db_service.add_trial(
         model_id=model.model_id, status=TrialStatus.waiting
     )
+
+    await message.reply("Запрос приняли, запускаем обстрел сервиса.")
 
     try:
         raw_recos = await app.gunner_service.get_recos(
@@ -237,6 +244,7 @@ async def request_h(message: types.Message, app: App) -> None:
         RecommendationsLimitSizeError,
         RequestLimitByUserError,
         DuplicatedRecommendationsError,
+        AuthorizationError,
     ) as e:
         reply, status = e, TrialStatus.failed  # type: ignore
 

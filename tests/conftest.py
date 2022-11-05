@@ -5,15 +5,20 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import gspread
+import pandas as pd
 import pytest
 import sqlalchemy as sa
 from alembic import command as alembic_command
 from alembic import config as alembic_config
+from pytest_httpserver import HeaderValueMatcher
+from rectools import Columns
 from sqlalchemy import orm
 
+from requestor.assessor import AssessorService
 from requestor.db.models import Base
 from requestor.db.service import DBService
 from requestor.google import GSService
+from requestor.gunner import GunnerService
 from requestor.services import make_db_service, make_gs_service
 from requestor.settings import ServiceConfig, get_config
 from tests.utils import DBObjectCreator, clear_spreadsheet
@@ -121,3 +126,42 @@ async def gs_service(service_config: ServiceConfig, spreadsheet: gspread.Spreads
     service = make_gs_service(service_config)
     await service.setup()
     return service
+
+
+@pytest.fixture
+def assessor_service() -> AssessorService:
+    data = (
+        (
+            1,
+            1,
+        ),
+    )
+    interactions = pd.DataFrame(data, columns=Columns.UserItem)
+    service = AssessorService(interactions=interactions)
+    return service
+
+
+@pytest.fixture
+def users_batches() -> tp.List[tp.List[int]]:
+    return [[1, 2, 3, 4, 5]]
+
+
+@pytest.fixture
+def gunner_service(users_batches) -> GunnerService:
+    service = GunnerService(users_batches=users_batches)
+    return service
+
+
+@pytest.fixture
+def api_token() -> str:
+    return "api_token"
+
+
+@pytest.fixture
+def auth_headers(api_token) -> tp.Dict[str, str]:
+    return {"Authorization": f"Bearer {api_token}"}
+
+
+@pytest.fixture
+def header_value_matcher() -> HeaderValueMatcher:
+    return HeaderValueMatcher({"Authorization": HeaderValueMatcher.default_header_value_matcher})

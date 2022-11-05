@@ -22,6 +22,8 @@ def parse_msg_with_team_info(
         api_key = None
 
     try:
+        if api_base_url.endswith("/"):
+            api_base_url = api_base_url[:-1]
         return token, TeamInfo(
             title=title, chat_id=message.chat.id, api_base_url=api_base_url, api_key=api_key
         )

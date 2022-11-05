@@ -1,4 +1,5 @@
 from .exceptions import (
+    AuthorizationError,
     DuplicatedRecommendationsError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
@@ -13,4 +14,5 @@ __all__ = (
     "RecommendationsLimitSizeError",
     "DuplicatedRecommendationsError",
     "UserRecoResponse",
+    "AuthorizationError",
 )

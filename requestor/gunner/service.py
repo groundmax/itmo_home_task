@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import typing as tp
 from asyncio import Task
 from http import HTTPStatus
@@ -11,6 +10,7 @@ from pydantic.main import BaseModel
 from requestor.settings import config
 
 from .exceptions import (
+    AuthorizationError,
     DuplicatedRecommendationsError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
@@ -66,8 +66,17 @@ class GunnerService(BaseModel):
         user_id: int,
     ) -> UserResponseInfo:
         async with session.get(request_url) as response:
+            resp_size = response.content.total_bytes
+            if resp_size > config.gunner_config.max_resp_bytes_size:
+                raise HugeResponseSizeError(f"Got too big response size for user `{user_id}`.")
+
             resp = await response.json()
+
             return user_id, resp, response.status
+
+    async def ping(self, session: ClientSession, api_base_url: str) -> int:
+        async with session.get(f"{api_base_url}/health") as response:
+            return response.status
 
     def get_tasks(
         self,
@@ -107,6 +116,12 @@ class GunnerService(BaseModel):
             headers = None
 
         async with ClientSession(headers=headers) as session:
+            status = await self.ping(session, api_base_url)
+            if status == HTTPStatus.UNAUTHORIZED:
+                raise AuthorizationError(
+                    "There is a problem with authorization, check your API token"
+                )
+
             for users_batch in self.users_batches:
                 queue = self.init_queue(users_batch)
                 while queue:
@@ -118,12 +133,6 @@ class GunnerService(BaseModel):
                         if status != HTTPStatus.OK:
                             queue[user_id] += 1
                             continue
-
-                        resp_size = sys.getsizeof(response)
-                        if resp_size > config.gunner_config.max_resp_bytes_size:
-                            raise HugeResponseSizeError(
-                                f"Got too big response size for user `{user_id}`."
-                            )
 
                         model_response = UserRecoResponse(**response)
 
