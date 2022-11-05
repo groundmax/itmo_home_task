@@ -259,7 +259,7 @@ def prepare_http_responses(
     response_type: ResponseTypes,
     user_id_with_custom_response: int = 2,
 ) -> None:
-    httpserver.expect_request(f"/health").respond_with_data('DATA')
+    httpserver.expect_request("/health").respond_with_data("DATA")
     for users_batch in users_batches:
         for user_id in users_batch:
             if user_id == user_id_with_custom_response:
