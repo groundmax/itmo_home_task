@@ -245,7 +245,7 @@ def gen_response_based_on_type(
     elif response_type == ResponseTypes.incorrect_model_response:
         response = {"items": list(range(reco_size))}
     elif response_type == ResponseTypes.huge_bytes_size:
-        response = gen_json_reco_response(user_id, 10**5)
+        response = gen_json_reco_response(user_id, 10**6)
     else:
         raise ValueError("There is no such response type")
 
