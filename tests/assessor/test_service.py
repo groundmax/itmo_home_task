@@ -44,7 +44,7 @@ async def test_prepare_recos(
         ],
     )
 
-    assert (actual == expected).all().all()
+    pd.testing.assert_frame_equal(actual, expected)
 
 
 async def test_estimate_recos(
