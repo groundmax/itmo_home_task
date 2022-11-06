@@ -9,7 +9,7 @@ from requestor.bot import create_bot
 from requestor.bot.events import make_on_startup_handler, make_on_shutdown_handler
 from requestor.services import App
 from requestor.settings import config, Env
-from requestor.log import setup_logging
+from requestor.log import setup_logging, app_logger
 from requestor.utils import do_with_retries
 
 
@@ -41,6 +41,7 @@ def main():
     setup_logging(config)
 
     if config.run_migrations:
+        app_logger.info("Upgrading DB...")
         do_with_retries(upgrade_db, OperationalError, config.migration_attempts)
 
     app = App.from_config(config)

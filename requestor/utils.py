@@ -52,6 +52,7 @@ def chunkify(array: tp.List[T], chunk_size: int) -> tp.List[tp.List[T]]:
 
 
 def download_file_body(s3_config: S3Config) -> bytes:
+    app_logger.info("Downloading interactions...")
     client = boto3.client(
         service_name="s3",
         endpoint_url=s3_config.endpoint_url,
