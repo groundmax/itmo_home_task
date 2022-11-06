@@ -2,11 +2,14 @@ import datetime
 import io
 import typing as tp
 import uuid
+from functools import partial
 from tempfile import TemporaryFile
 
 import boto3
 import pandas as pd
+from botocore.exceptions import EndpointConnectionError
 
+from requestor.log import app_logger
 from requestor.settings import S3Config
 
 TZ_UTC = datetime.timezone.utc
@@ -20,6 +23,21 @@ def utc_now() -> datetime.datetime:
 
 def make_uuid() -> str:
     return str(uuid.uuid4())
+
+
+def do_with_retries(  # type: ignore[return]
+    func: tp.Callable[[], T],
+    exc_type: tp.Type[Exception],
+    max_attempts: int,
+) -> T:
+    for attempt in range(1, max_attempts + 1):
+        app_logger.info(f"Attempt {attempt}")
+        try:
+            return func()
+        except exc_type as e:
+            app_logger.info(f"Caught exception on attempt {attempt}: {e!r}")
+            if attempt == max_attempts:
+                raise
 
 
 def chunkify(array: tp.List[T], chunk_size: int) -> tp.List[tp.List[T]]:
@@ -42,7 +60,8 @@ def download_file_body(s3_config: S3Config) -> bytes:
         aws_secret_access_key=s3_config.secret_access_key,
     )
     with TemporaryFile("w+b") as f:
-        client.download_fileobj(s3_config.bucket, s3_config.key, f)
+        func = partial(client.download_fileobj, s3_config.bucket, s3_config.key, f)
+        do_with_retries(func, EndpointConnectionError, s3_config.max_attempts)
         f.seek(0)
         body = f.read()
     return body
