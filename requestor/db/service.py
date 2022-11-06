@@ -45,7 +45,7 @@ class DBService(BaseModel):
     async def ping(self) -> bool:
         return await self.pool.fetchval("SELECT TRUE")
 
-    async def _pop_token(self, token: str) -> None:
+    async def _remove_token(self, token: str) -> None:
         query = """
             DELETE FROM tokens
             WHERE token = $1::VARCHAR
@@ -104,7 +104,7 @@ class DBService(BaseModel):
                 utc_now(),
                 utc_now(),
             )
-            await self._pop_token(token)
+            await self._remove_token(token)
             return Team(**record)
         except UniqueViolationError as e:
             raise DuplicatedTeamError(e)
