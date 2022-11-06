@@ -257,7 +257,7 @@ def prepare_http_responses(
     users_batches: tp.List[tp.List[int]],
     reco_size: int,
     response_type: ResponseTypes,
-    user_id_with_custom_response: int = 2,
+    user_id_with_custom_response: int = 1,
 ) -> None:
     httpserver.expect_request("/health").respond_with_data("DATA")
     for users_batch in users_batches:
