@@ -8,6 +8,7 @@ from aiogram.utils.markdown import bold, escape_md, text
 from requestor.db import (
     DuplicatedModelError,
     DuplicatedTeamError,
+    ModelNotFoundError,
     TeamNotFoundError,
     TokenNotFoundError,
 )
@@ -216,7 +217,7 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
 
     try:
         model = await app.db_service.get_model_by_name(team.team_id, model_name)
-    except ModuleNotFoundError:
+    except ModelNotFoundError:
         return await message.reply(MODEL_NOT_FOUND_MSG)
 
     today_trials = await app.db_service.get_team_today_trial_stat(team.team_id)
