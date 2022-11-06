@@ -118,7 +118,7 @@ async def update_team_h(message: types.Message, app: App) -> None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
     if update_field == "api_base_url" and update_value.endswith("/"):
-        update_value == update_value[:-1]  # pylint: disable=pointless-statement
+        update_value = update_value[:-1]
 
     updated_team_info = TeamInfo(**current_team_info.dict())
 
@@ -230,7 +230,7 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         model_id=model.model_id, status=TrialStatus.waiting
     )
 
-    await message.reply("Запрос приняли, запускаем обстрел сервиса.")
+    await message.reply("Заявку приняли, начинаем запрашивать рекомендации от сервиса.")
 
     try:
         raw_recos = await app.gunner_service.get_recos(
@@ -238,7 +238,7 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
             model_name=model_name,
             api_token=team.api_key,
         )
-        reply, status = "Обстрел сервиса прошел успешно!", TrialStatus.success
+        reply, status = "Рекомендации от сервиса успешно получили!", TrialStatus.success
     except (
         HugeResponseSizeError,
         RecommendationsLimitSizeError,
