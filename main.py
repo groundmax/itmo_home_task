@@ -1,45 +1,57 @@
 import asyncio
-from requestor.bot import dp, register_handlers, bot, BotCommands
-from requestor.services import make_db_service, make_gs_service, make_assessor_service, make_gunner_service, App
-from requestor.settings import config, StorageServiceConfig
-from requestor.log import setup_logging
-from requestor.utils import get_interactions_from_s3
-import io
-import pandas as pd
+
+from aiogram import Bot, Dispatcher
+from aiogram.utils.executor import start_webhook
+from sqlalchemy.exc import OperationalError
+
+from migrations.utils import upgrade_db
+from requestor.bot import create_bot
+from requestor.bot.events import make_on_startup_handler, make_on_shutdown_handler
+from requestor.services import App
+from requestor.settings import config, Env
+from requestor.log import setup_logging, app_logger
+from requestor.utils import do_with_retries
 
 
-
-async def main():
-    db_service = make_db_service(config)
-    gs_service = make_gs_service(config)
-
-    s3_storage_config = StorageServiceConfig()
-    interactions = get_interactions_from_s3(s3_storage_config)
-
-    print(interactions.shape)
-    print(interactions.head())
-
-    gunner_service = make_gunner_service(config, interactions)
-    assessor_service = make_assessor_service(interactions)
-
-    app = App(
-        assessor_service=assessor_service,
-        db_service=db_service,
-        gs_service=gs_service,
-        gunner_service=gunner_service
-    )
-
-    register_handlers(dp, app, config)
-    setup_logging(config)
-
-    await bot.set_my_commands(commands=BotCommands.get_bot_commands())
-    await db_service.setup()
-    await gs_service.setup()
+async def run_with_polling(bot: Bot, dp: Dispatcher, app: App) -> None:
+    await make_on_startup_handler(bot, app, None)(dp)
     try:
         await dp.start_polling()
     finally:
-        await db_service.cleanup()
+        await make_on_shutdown_handler(bot, app)(dp)
+
+
+def run_with_webhook(bot: Bot, dp: Dispatcher, app: App) -> None:
+    webhook_path_pattern = config.telegram_config.webhook_path_pattern
+    webhook_path = webhook_path_pattern.format(bot_token=config.telegram_config.bot_token)
+    webhook_url = config.telegram_config.webhook_host + webhook_path
+
+    start_webhook(
+        dispatcher=dp,
+        webhook_path=webhook_path,
+        skip_updates=True,
+        on_startup=make_on_startup_handler(bot, app, webhook_url),
+        on_shutdown=make_on_shutdown_handler(bot, app),
+        host=config.telegram_config.host,
+        port=config.telegram_config.port,
+    )
+
+
+def main():
+    setup_logging(config)
+
+    if config.run_migrations:
+        app_logger.info("Upgrading DB...")
+        do_with_retries(upgrade_db, OperationalError, config.migration_attempts)
+
+    app = App.from_config(config)
+    bot, dp = create_bot(app)
+
+    if config.env == Env.PRODUCTION:
+        run_with_webhook(bot, dp, app)
+    else:
+        asyncio.run(run_with_polling(bot, dp, app))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

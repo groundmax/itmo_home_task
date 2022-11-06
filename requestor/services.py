@@ -8,7 +8,7 @@ from .db.service import DBService
 from .google import GSService
 from .gunner import GunnerService
 from .settings import ServiceConfig
-from .utils import chunkify
+from .utils import chunkify, get_interactions_from_s3
 
 
 def make_db_service(config: ServiceConfig) -> DBService:
@@ -39,3 +39,27 @@ class App(BaseModel):
     db_service: DBService
     gs_service: GSService
     gunner_service: GunnerService
+
+    @classmethod
+    def from_config(cls, config: ServiceConfig) -> "App":
+        db_service = make_db_service(config)
+        gs_service = make_gs_service(config)
+
+        interactions = get_interactions_from_s3(config.s3_config)
+
+        gunner_service = make_gunner_service(config, interactions)
+        assessor_service = make_assessor_service(interactions)
+
+        return App(
+            assessor_service=assessor_service,
+            db_service=db_service,
+            gs_service=gs_service,
+            gunner_service=gunner_service,
+        )
+
+    async def setup(self) -> None:
+        await self.db_service.setup()
+        await self.gs_service.setup()
+
+    async def cleanup(self) -> None:
+        await self.db_service.cleanup()
