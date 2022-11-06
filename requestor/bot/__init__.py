@@ -1,11 +1,3 @@
-from .commands import BotCommands
-from .create_bot import bot, config, dp
-from .handlers import register_handlers
+from .bot import create_bot
 
-__all__ = (
-    "dp",
-    "bot",
-    "config",
-    "register_handlers",
-    "BotCommands",
-)
+__all__ = ("create_bot",)

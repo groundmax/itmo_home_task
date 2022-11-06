@@ -6,6 +6,11 @@ from rectools.metrics import MAP
 from rectools.metrics.base import MetricAtK
 
 
+class Env(str, Enum):
+    TEST = "TEST"
+    PRODUCTION = "PRODUCTION"
+
+
 class Config(BaseSettings):
     class Config:
         case_sensitive = False
@@ -41,11 +46,15 @@ class DBConfig(Config):
 class TelegramConfig(Config):
     bot_token: str
     bot_name: str
+    webhook_host: str
+    port: int
+    host: str = "0.0.0.0"  # nosec
+    webhook_path_pattern: str = "/webhook/{bot_token}"
     team_models_display_limit: int = 10
 
 
 class GSConfig(Config):
-    credentials_file_name: str
+    credentials: str
     url: str
     global_leaderboard_page_name: str
     global_leaderboard_page_max_rows: int
@@ -81,13 +90,18 @@ class GunnerConfig(Config):
     failed_trial_limit: int = 20
 
 
-class StorageServiceConfig(Config):
+class S3Config(Config):
     endpoint_url: str
     access_key_id: str
     secret_access_key: str
     region: str
     bucket: str
     key: str
+    max_attempts: int = 10
+
+    class Config:
+        case_sensitive = False
+        env_prefix = "S3_"
 
 
 class ServiceConfig(Config):
@@ -97,6 +111,11 @@ class ServiceConfig(Config):
     gs_config: GSConfig
     assessor_config: AssessorConfig
     gunner_config: GunnerConfig
+    s3_config: S3Config
+
+    env: Env = Env.TEST
+    run_migrations: bool = False
+    migration_attempts: int = 10
 
 
 def get_config() -> ServiceConfig:
@@ -107,6 +126,7 @@ def get_config() -> ServiceConfig:
         gs_config=GSConfig(),
         assessor_config=AssessorConfig(),
         gunner_config=GunnerConfig(),
+        s3_config=S3Config(),
     )
 
 

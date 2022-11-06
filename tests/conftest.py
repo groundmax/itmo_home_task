@@ -3,6 +3,7 @@ import os
 import typing as tp
 from contextlib import contextmanager
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import gspread
 import pytest
@@ -106,7 +107,10 @@ def create_db_object(
 @pytest.fixture
 def spreadsheet(service_config: ServiceConfig) -> tp.Iterator[gspread.Spreadsheet]:
     config = service_config.gs_config
-    sa = gspread.service_account(config.credentials_file_name)
+    with NamedTemporaryFile("w+") as f:
+        f.write(config.credentials)
+        f.seek(0)
+        sa = gspread.service_account(f.name)
     sheet = sa.open_by_url(config.url)
     clear_spreadsheet(sheet)
 
