@@ -42,7 +42,7 @@ class App(BaseModel):
 
     @classmethod
     def from_config(cls, config: ServiceConfig) -> "App":
-        db_service = make_db_service(config)
+        db_service = make_db_service(config)  # Do initialization here to avoid type errors
         gs_service = make_gs_service(config)
 
         interactions = get_interactions_from_s3(config.s3_config)

@@ -159,9 +159,9 @@ class TestTeams:
         team = await db_service.get_team_by_chat(TEAM_INFO.chat_id)
         assert_db_model_equal_to_pydantic_model(db_team, team)
 
-    async def test_get_nonexistent_team_by_chat_success(self, db_service: DBService) -> None:
-        team = await db_service.get_team_by_chat(TEAM_INFO.chat_id)
-        assert team is None
+    async def test_get_nonexistent_team_by_chat(self, db_service: DBService) -> None:
+        with pytest.raises(TeamNotFoundError):
+            await db_service.get_team_by_chat(TEAM_INFO.chat_id)
 
 
 class TestModels:

@@ -45,7 +45,7 @@ class DBService(BaseModel):
     async def ping(self) -> bool:
         return await self.pool.fetchval("SELECT TRUE")
 
-    async def _pop_token(self, token: str) -> str:
+    async def _remove_token(self, token: str) -> None:
         query = """
             DELETE FROM tokens
             WHERE token = $1::VARCHAR
@@ -54,10 +54,22 @@ class DBService(BaseModel):
         team_description = await self.pool.fetchval(query, token)
         if team_description is None:
             raise TokenNotFoundError()
+
+    async def _get_team_description_by_token(self, token: str) -> str:
+        query = """
+            SELECT team_description
+            FROM tokens
+            WHERE token = $1::VARCHAR
+        """
+
+        team_description = await self.pool.fetchval(query, token)
+
+        if team_description is None:
+            raise TokenNotFoundError()
         return team_description
 
     async def add_team(self, team_info: TeamInfo, token: str) -> Team:
-        description = await self._pop_token(token)
+        description = await self._get_team_description_by_token(token)
         query = """
             INSERT INTO teams
                 (description, title, chat_id, api_base_url, api_key, created_at, updated_at)
@@ -92,6 +104,7 @@ class DBService(BaseModel):
                 utc_now(),
                 utc_now(),
             )
+            await self._remove_token(token)
             return Team(**record)
         except UniqueViolationError as e:
             raise DuplicatedTeamError(e)
@@ -133,15 +146,17 @@ class DBService(BaseModel):
             raise TeamNotFoundError(f"Team '{team_id}' not found")
         return Team(**record)
 
-    async def get_team_by_chat(self, chat_id: int) -> tp.Optional[Team]:
+    async def get_team_by_chat(self, chat_id: int) -> Team:
         query = """
             SELECT *
             FROM teams
             WHERE chat_id = $1::BIGINT
         """
         record = await self.pool.fetchrow(query, chat_id)
-        res = Team(**record) if record is not None else None
-        return res
+
+        if record is None:
+            raise TeamNotFoundError()
+        return Team(**record)
 
     async def add_model(self, model_info: ModelInfo) -> Model:
         query = """

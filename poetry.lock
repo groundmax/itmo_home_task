@@ -1277,7 +1277,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "flake8 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.10.0"
-content-hash = "a5eebdaac79da0b96feec12a20596917301621a5fddb0d4650839794ed331ea9"
+content-hash = "dd0839c52c58d754e3fc1a1cc1b7ac7bc72a8de453597db4f64dcb8cef73c1bf"
 
 [metadata.files]
 aiogram = [

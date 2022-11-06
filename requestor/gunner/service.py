@@ -1,5 +1,4 @@
 import asyncio
-import sys
 import typing as tp
 from asyncio import Task
 from http import HTTPStatus
@@ -11,6 +10,7 @@ from pydantic.main import BaseModel
 from requestor.settings import config
 
 from .exceptions import (
+    AuthorizationError,
     DuplicatedRecommendationsError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
@@ -18,6 +18,7 @@ from .exceptions import (
 )
 
 START_RANK_FROM: tp.Final = 1
+NOT_REQUESTED_STATUS: tp.Final = -999
 
 RecommendationRow = tp.Tuple[int, int, int]
 UserResponseInfo = tp.Tuple[int, tp.Dict[str, tp.Any], int]
@@ -66,20 +67,31 @@ class GunnerService(BaseModel):
         user_id: int,
     ) -> UserResponseInfo:
         async with session.get(request_url) as response:
+            resp_size = response.content.total_bytes
+            if resp_size > config.gunner_config.max_resp_bytes_size:
+                raise HugeResponseSizeError(f"Got too big response size for user `{user_id}`.")
+
             resp = await response.json()
+
             return user_id, resp, response.status
+
+    async def ping(self, session: ClientSession, api_base_url: str) -> int:
+        async with session.get(f"{api_base_url}/health") as response:
+            return response.status
 
     def get_tasks(
         self,
-        queue: tp.Dict[int, int],
+        queue: tp.Dict[int, tp.Tuple[int, int]],
         session: ClientSession,
         api_base_url: str,
         model_name: str,
     ) -> tp.List[Task]:
         tasks = []
-        for user_id, n_times_requested in queue.items():
+        for user_id, (n_times_requested, last_status) in queue.items():
             if n_times_requested >= config.gunner_config.max_n_times_requested:
-                raise RequestLimitByUserError(f"User_id `{user_id}` reached request limit")
+                raise RequestLimitByUserError(
+                    f"User_id `{user_id}` reached request limit. HTTPError: {last_status}"
+                )
 
             url = config.gunner_config.request_url_template.format(
                 api_base_url=api_base_url,
@@ -90,8 +102,8 @@ class GunnerService(BaseModel):
             tasks.append(asyncio.create_task(self.request(session, url, user_id)))
         return tasks
 
-    def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, int]:
-        return {user_id: 0 for user_id in users_batch}
+    def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, tp.Tuple[int, int]]:
+        return {user_id: (0, NOT_REQUESTED_STATUS) for user_id in users_batch}
 
     async def get_recos(
         self,
@@ -107,6 +119,12 @@ class GunnerService(BaseModel):
             headers = None
 
         async with ClientSession(headers=headers) as session:
+            status = await self.ping(session, api_base_url)
+            if status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
+                raise AuthorizationError(
+                    "There is a problem with authorization, check your API token"
+                )
+
             for users_batch in self.users_batches:
                 queue = self.init_queue(users_batch)
                 while queue:
@@ -116,14 +134,9 @@ class GunnerService(BaseModel):
                     for user_id, response, status in responses:
 
                         if status != HTTPStatus.OK:
-                            queue[user_id] += 1
+                            n_times_requested, _ = queue[user_id]
+                            queue[user_id] = (n_times_requested + 1, status)
                             continue
-
-                        resp_size = sys.getsizeof(response)
-                        if resp_size > config.gunner_config.max_resp_bytes_size:
-                            raise HugeResponseSizeError(
-                                f"Got too big response size for user `{user_id}`."
-                            )
 
                         model_response = UserRecoResponse(**response)
 

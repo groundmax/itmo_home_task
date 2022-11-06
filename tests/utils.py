@@ -1,9 +1,11 @@
 import typing as tp
 from datetime import datetime, timedelta
+from enum import Enum
 from uuid import UUID, uuid4
 
 import gspread
 from pydantic import BaseModel
+from pytest_httpserver import HTTPServer
 
 from requestor.db.models import (
     Base,
@@ -13,6 +15,7 @@ from requestor.db.models import (
     TokensTable,
     TrialsTable,
 )
+from requestor.gunner import UserRecoResponse
 from requestor.models import ModelInfo, TeamInfo, TokenInfo, TrialStatus
 
 DBObjectCreator = tp.Callable[[Base], None]
@@ -205,3 +208,62 @@ def gen_team_info(rnd: int = 0) -> TeamInfo:
 def clear_spreadsheet(ss: gspread.Spreadsheet) -> None:
     for ws in ss.worksheets():
         ws.batch_clear([f"A2:{MAX_WORKSHEET_COL}{MAX_WORKSHEET_ROWS}"])
+
+
+def gen_json_reco_response(
+    user_id: int, items_size: int
+) -> tp.Dict[str, tp.Union[int, tp.List[int]]]:
+    return {"user_id": user_id, "items": list(range(items_size))}
+
+
+def gen_model_user_reco_response(user_id: int, items_size: int) -> UserRecoResponse:
+    return UserRecoResponse(**gen_json_reco_response(user_id, items_size))
+
+
+class ResponseTypes(Enum):
+    ok = "ok"
+    contains_null = "contains_null"
+    contains_duplicates = "contains_duplicates"
+    incorrect_reco_size = "incorrect_reco_size"
+    incorrect_model_response = "incorrect_model_response"
+    huge_bytes_size = "huge_bytes_size"
+
+
+def gen_response_based_on_type(
+    user_id: int,
+    reco_size: int,
+    response_type: ResponseTypes,
+) -> tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]]:
+    if response_type == ResponseTypes.ok:
+        response = gen_json_reco_response(user_id, reco_size)
+    elif response_type == ResponseTypes.contains_null:
+        response = {"user_id": user_id, "items": list(range(reco_size - 1)) + [None]}
+    elif response_type == ResponseTypes.contains_duplicates:
+        response = {"user_id": user_id, "items": [0 for _ in range(reco_size)]}
+    elif response_type == ResponseTypes.incorrect_reco_size:
+        response = {"user_id": user_id, "items": list(range(reco_size - 1))}
+    elif response_type == ResponseTypes.incorrect_model_response:
+        response = {"items": list(range(reco_size))}
+    elif response_type == ResponseTypes.huge_bytes_size:
+        response = gen_json_reco_response(user_id, 10**6)
+    else:
+        raise ValueError("There is no such response type")
+
+    return response
+
+
+def prepare_http_responses(
+    httpserver: HTTPServer,
+    users_batches: tp.List[tp.List[int]],
+    reco_size: int,
+    response_type: ResponseTypes,
+    user_id_with_custom_response: int = 1,
+) -> None:
+    httpserver.expect_request("/health").respond_with_data("DATA")
+    for users_batch in users_batches:
+        for user_id in users_batch:
+            if user_id == user_id_with_custom_response:
+                response = gen_response_based_on_type(user_id, reco_size, response_type)
+            else:
+                response = gen_json_reco_response(user_id, reco_size)
+            httpserver.expect_request(f"/model_name/{user_id}").respond_with_json(response)
