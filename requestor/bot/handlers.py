@@ -39,11 +39,13 @@ from .constants import (
 
 
 async def handle(handler, app: App, message: types.Message) -> None:
+    app_logger.info(f"Got msg {message.message_id} ({message.text}) from {message.chat.title}")
     try:
         await handler(message, app)
     except Exception:
         app_logger.error(traceback.format_exc())
         raise
+    app_logger.info(f"Msg {message.message_id} ({message.text}) from {message.chat.title} handled")
 
 
 async def start_h(message: types.Message, app: App) -> None:
