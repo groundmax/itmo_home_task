@@ -101,6 +101,7 @@ class TestGunnerAuth:
         (
             ({"Authorization": "Bearer ApiToken"}, HTTPStatus.OK),
             ({"Authorization": "Bearer IncorrectToken"}, HTTPStatus.UNAUTHORIZED),
+            ({"Authorization": "Bearer IncorrectToken"}, HTTPStatus.FORBIDDEN),
         ),
     )
     async def test_ping(
@@ -122,6 +123,21 @@ class TestGunnerAuth:
 
         assert status == response_status
 
+    async def test_ping_no_auth_in_health_but_auth_in_session(
+        self,
+        httpserver: HTTPServer,
+        gunner_service: GunnerService,
+        auth_headers: tp.Dict[str, str],
+    ) -> None:
+        httpserver.expect_request(
+            "/health",
+        ).respond_with_data("DATA", status=HTTPStatus.OK)
+
+        async with ClientSession(headers=auth_headers) as session:
+            status = await gunner_service.ping(session, httpserver.url_for("/"))
+
+        assert status == HTTPStatus.OK
+
 
 class TestGunnerNoAuth:
     @pytest.mark.parametrize("model_name", ("model_1", "model_2"))
@@ -134,6 +150,7 @@ class TestGunnerNoAuth:
         model_name: str,
     ) -> None:
         reco_size = service_config.assessor_config.reco_size
+        httpserver.expect_request("/health").respond_with_data("DATA")
 
         expected = []
         for users_batch in users_batches:
@@ -156,7 +173,7 @@ class TestGunnerNoAuth:
         httpserver: HTTPServer,
         gunner_service: GunnerService,
     ) -> None:
-        httpserver.expect_request("/health").respond_with_data("alive")
+        httpserver.expect_request("/health").respond_with_data("DATA")
 
         async with ClientSession() as session:
             status = await gunner_service.ping(session, httpserver.url_for("/"))
@@ -180,6 +197,7 @@ class TestGunnerNoAuth:
         http_status: int,
     ) -> None:
         reco_size = service_config.assessor_config.reco_size
+        httpserver.expect_request("/health").respond_with_data("DATA")
 
         for users_batch in users_batches:
             for user_id in users_batch:
@@ -189,7 +207,7 @@ class TestGunnerNoAuth:
                     status=http_status,
                 )
 
-        with pytest.raises(RequestLimitByUserError):
+        with pytest.raises(RequestLimitByUserError, match=rf"HTTPError: {http_status}"):
             await gunner_service.get_recos(
                 httpserver.url_for("/"),
                 "model_name",

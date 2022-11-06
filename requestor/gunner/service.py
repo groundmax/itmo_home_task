@@ -18,6 +18,7 @@ from .exceptions import (
 )
 
 START_RANK_FROM: tp.Final = 1
+NOT_REQUESTED_STATUS: tp.Final = -999
 
 RecommendationRow = tp.Tuple[int, int, int]
 UserResponseInfo = tp.Tuple[int, tp.Dict[str, tp.Any], int]
@@ -80,15 +81,17 @@ class GunnerService(BaseModel):
 
     def get_tasks(
         self,
-        queue: tp.Dict[int, int],
+        queue: tp.Dict[int, tp.Tuple[int, int]],
         session: ClientSession,
         api_base_url: str,
         model_name: str,
     ) -> tp.List[Task]:
         tasks = []
-        for user_id, n_times_requested in queue.items():
+        for user_id, (n_times_requested, last_status) in queue.items():
             if n_times_requested >= config.gunner_config.max_n_times_requested:
-                raise RequestLimitByUserError(f"User_id `{user_id}` reached request limit")
+                raise RequestLimitByUserError(
+                    f"User_id `{user_id}` reached request limit. HTTPError: {last_status}"
+                )
 
             url = config.gunner_config.request_url_template.format(
                 api_base_url=api_base_url,
@@ -99,8 +102,8 @@ class GunnerService(BaseModel):
             tasks.append(asyncio.create_task(self.request(session, url, user_id)))
         return tasks
 
-    def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, int]:
-        return {user_id: 0 for user_id in users_batch}
+    def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, tp.Tuple[int, int]]:
+        return {user_id: (0, NOT_REQUESTED_STATUS) for user_id in users_batch}
 
     async def get_recos(
         self,
@@ -117,7 +120,7 @@ class GunnerService(BaseModel):
 
         async with ClientSession(headers=headers) as session:
             status = await self.ping(session, api_base_url)
-            if status == HTTPStatus.UNAUTHORIZED:
+            if status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
                 raise AuthorizationError(
                     "There is a problem with authorization, check your API token"
                 )
@@ -131,7 +134,8 @@ class GunnerService(BaseModel):
                     for user_id, response, status in responses:
 
                         if status != HTTPStatus.OK:
-                            queue[user_id] += 1
+                            n_times_requested, _ = queue[user_id]
+                            queue[user_id] = (n_times_requested + 1, status)
                             continue
 
                         model_response = UserRecoResponse(**response)
