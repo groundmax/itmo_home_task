@@ -8,7 +8,7 @@ RUN pip install -U --no-cache-dir pip poetry setuptools wheel && \
     pip wheel -w dist -r requirements.txt
 
 
-FROM python:3.8-slim-buster as runtime
+FROM python:3.8-slim as runtime
 
 WORKDIR /usr/src/app
 
@@ -25,6 +25,6 @@ RUN pip install -U --no-cache-dir pip dist/*.whl && \
     rm -rf dist
 
 COPY --from=build migrations migrations
-COPY --from=build alembic.ini main.py entrypoint.sh ./
+COPY --from=build alembic.ini main.py ./
 
 CMD ["python", "main.py"]
