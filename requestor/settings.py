@@ -6,6 +6,11 @@ from rectools.metrics import MAP
 from rectools.metrics.base import MetricAtK
 
 
+class Env(str, Enum):
+    TEST = "TEST"
+    PRODUCTION = "PRODUCTION"
+
+
 class Config(BaseSettings):
     class Config:
         case_sensitive = False
@@ -92,6 +97,7 @@ class S3Config(Config):
     region: str
     bucket: str
     key: str
+    max_attempts: int = 10
 
     class Config:
         case_sensitive = False
@@ -106,6 +112,10 @@ class ServiceConfig(Config):
     assessor_config: AssessorConfig
     gunner_config: GunnerConfig
     s3_config: S3Config
+
+    env: Env = Env.TEST
+    run_migrations: bool = False
+    migration_attempts: int = 10
 
 
 def get_config() -> ServiceConfig:
