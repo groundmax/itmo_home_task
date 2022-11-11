@@ -13,14 +13,15 @@ from requestor.db import (
     TokenNotFoundError,
 )
 from requestor.gunner import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
 )
 from requestor.log import app_logger
-from requestor.models import ModelInfo, TeamInfo, Trial, TrialStatus
+from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
 from requestor.services import App
 from requestor.settings import ServiceConfig, config
 
@@ -29,6 +30,7 @@ from .bot_utils import (
     parse_msg_with_model_info,
     parse_msg_with_request_info,
     parse_msg_with_team_info,
+    url_validator,
     validate_today_trial_stats,
 )
 from .commands import BotCommands
@@ -38,6 +40,7 @@ from .constants import (
     MODEL_NOT_FOUND_MSG,
     TEAM_NOT_FOUND_MSG,
 )
+from .exceptions import InvalidURLError
 
 
 async def handle(handler, app: App, message: types.Message) -> None:
@@ -65,7 +68,10 @@ async def help_h(event: types.Message, app: App) -> None:
 
 
 async def register_team_h(message: types.Message, app: App) -> None:
-    token, team_info = parse_msg_with_team_info(message)
+    try:
+        token, team_info = parse_msg_with_team_info(message)
+    except InvalidURLError as e:
+        return await message.reply(e)
 
     if team_info is None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
@@ -104,13 +110,13 @@ async def register_team_h(message: types.Message, app: App) -> None:
     await message.reply(reply)
 
 
-async def update_team_h(message: types.Message, app: App) -> None:
+async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
+    message: types.Message, app: App
+) -> None:
     try:
         current_team_info = await app.db_service.get_team_by_chat(message.chat.id)
     except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
-
-    # TODO: think of way to generalize this pattern to reduce duplicate code
 
     try:
         update_field, update_value = message.get_args().split()
@@ -120,8 +126,13 @@ async def update_team_h(message: types.Message, app: App) -> None:
     if update_field not in AVAILABLE_FOR_UPDATE:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
-    if update_field == "api_base_url" and update_value.endswith("/"):
-        update_value = update_value[:-1]
+    if update_field == "api_base_url":
+        try:
+            url_validator(update_value)
+        except InvalidURLError as e:
+            return await message.reply(e)
+        if update_value.endswith("/"):
+            update_value = update_value[:-1]
 
     updated_team_info = TeamInfo(**current_team_info.dict())
 
@@ -212,9 +223,9 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
     except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
-    model_name = parse_msg_with_request_info(message)
-
-    if model_name is None:
+    try:
+        model_name = parse_msg_with_request_info(message)
+    except ValueError:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
     try:
@@ -233,12 +244,17 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         model_id=model.model_id, status=TrialStatus.waiting
     )
 
-    await message.reply("Заявку приняли, начинаем запрашивать рекомендации от сервиса.")
+    message_to_update = await message.reply(
+        "Заявку приняли, начинаем запрашивать рекомендации от сервиса."
+    )
+
+    notifier = ProgressNotifier(message=message_to_update)
 
     try:
         raw_recos = await app.gunner_service.get_recos(
             api_base_url=team.api_base_url,
             model_name=model_name,
+            notifier=notifier,
             api_token=team.api_key,
         )
         reply, status = "Рекомендации от сервиса успешно получили!", TrialStatus.success
@@ -247,7 +263,8 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         RecommendationsLimitSizeError,
         RequestLimitByUserError,
         DuplicatedRecommendationsError,
-        AuthorizationError,
+        HTTPAuthorizationError,
+        HTTPResponseNotOKError,
     ) as e:
         reply, status = e, TrialStatus.failed  # type: ignore
 
@@ -256,10 +273,18 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
     if status != TrialStatus.success:
         return await message.reply(reply)
 
-    await message.reply(reply)
+    await notifier.send_progress_update(reply)
 
     prepared_recos = await app.assessor_service.prepare_recos(raw_recos)
     metrics_data = await app.assessor_service.estimate_recos(prepared_recos)
+    precision = config.telegram_config.metric_by_assessor_display_precision
+
+    for metric in metrics_data:
+        if metric.name == config.assessor_config.main_metric_name:
+            await notifier.send_progress_update(
+                f"Результат {metric.name} = {metric.value:{precision}f}"
+            )
+
     await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
 
     rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)

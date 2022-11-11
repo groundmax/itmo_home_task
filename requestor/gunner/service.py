@@ -2,16 +2,19 @@ import asyncio
 import typing as tp
 from asyncio import Task
 from http import HTTPStatus
+from urllib.parse import urlsplit
 
 from aiohttp import ClientSession
 from pydantic import validator
 from pydantic.main import BaseModel
 
+from requestor.models import ProgressNotifier
 from requestor.settings import config
 
 from .exceptions import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
@@ -76,10 +79,12 @@ class GunnerService(BaseModel):
             return user_id, resp, response.status
 
     async def ping(self, session: ClientSession, api_base_url: str) -> int:
-        async with session.get(f"{api_base_url}/health") as response:
+        scheme, netloc, _, _, _ = urlsplit(api_base_url)
+
+        async with session.get(f"{scheme}://{netloc}/health") as response:
             return response.status
 
-    def get_tasks(
+    async def get_tasks(
         self,
         queue: tp.Dict[int, tp.Tuple[int, int]],
         session: ClientSession,
@@ -102,13 +107,14 @@ class GunnerService(BaseModel):
             tasks.append(asyncio.create_task(self.request(session, url, user_id)))
         return tasks
 
-    def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, tp.Tuple[int, int]]:
+    async def init_queue(self, users_batch: tp.List[int]) -> tp.Dict[int, tp.Tuple[int, int]]:
         return {user_id: (0, NOT_REQUESTED_STATUS) for user_id in users_batch}
 
-    async def get_recos(
+    async def get_recos(  # pylint: disable=too-many-branches
         self,
         api_base_url: str,
         model_name: str,
+        notifier: tp.Optional[ProgressNotifier] = None,
         api_token: tp.Optional[str] = None,
     ) -> tp.List[UserRecoResponse]:
         results = []
@@ -121,14 +127,17 @@ class GunnerService(BaseModel):
         async with ClientSession(headers=headers) as session:
             status = await self.ping(session, api_base_url)
             if status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
-                raise AuthorizationError(
-                    "There is a problem with authorization, check your API token"
+                raise HTTPAuthorizationError(
+                    "There is a problem with authorization, check your API token. "
+                    f"HTTPError: {status}"
                 )
+            if status != HTTPStatus.OK:
+                raise HTTPResponseNotOKError(f"Healtchcheck failed. HTTPError: {status}")
 
-            for users_batch in self.users_batches:
-                queue = self.init_queue(users_batch)
+            for batch_num, users_batch in enumerate(self.users_batches, 1):
+                queue = await self.init_queue(users_batch)
                 while queue:
-                    tasks = self.get_tasks(queue, session, api_base_url, model_name)
+                    tasks = await self.get_tasks(queue, session, api_base_url, model_name)
                     responses: tp.List[UserResponseInfo] = await asyncio.gather(*tasks)
 
                     for user_id, response, status in responses:
@@ -142,5 +151,9 @@ class GunnerService(BaseModel):
 
                         del queue[user_id]
                         results.append(model_response)
+
+                if notifier is not None:
+                    progress = f"Progress: {batch_num/(len(self.users_batches)):.2%}"
+                    await notifier.send_progress_update(progress)
 
         return results

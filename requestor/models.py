@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
+from aiogram import types
 from pydantic import BaseModel
 
 
@@ -65,3 +66,13 @@ class GlobalLeaderboardRow(BaseModel):
     best_score: tp.Optional[float]
     n_attempts: int
     last_attempt: tp.Optional[datetime]
+
+
+class ProgressNotifier(BaseModel):
+    message: types.Message
+
+    async def send_progress_update(self, info: str) -> None:
+        await self.message.edit_text(info)
+
+    class Config:
+        arbitrary_types_allowed = True

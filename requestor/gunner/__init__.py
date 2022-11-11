@@ -1,6 +1,7 @@
 from .exceptions import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
@@ -14,5 +15,6 @@ __all__ = (
     "RecommendationsLimitSizeError",
     "DuplicatedRecommendationsError",
     "UserRecoResponse",
-    "AuthorizationError",
+    "HTTPAuthorizationError",
+    "HTTPResponseNotOKError",
 )

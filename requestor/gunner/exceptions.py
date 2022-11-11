@@ -2,8 +2,12 @@ class DuplicatedRecommendationsError(Exception):
     pass
 
 
-class AuthorizationError(Exception):
+class HTTPAuthorizationError(Exception):
     pass
+
+
+class HTTPResponseNotOKError(Exception):
+    """Raised when response from /health is not ok"""
 
 
 class RecommendationsLimitSizeError(Exception):

@@ -51,6 +51,7 @@ class TelegramConfig(Config):
     host: str = "0.0.0.0"  # nosec
     webhook_path_pattern: str = "/webhook/{bot_token}"
     team_models_display_limit: int = 10
+    metric_by_assessor_display_precision: float = 0.7
 
 
 class GSConfig(Config):
@@ -114,7 +115,7 @@ class ServiceConfig(Config):
     s3_config: S3Config
 
     env: Env = Env.TEST
-    run_migrations: bool = False
+    run_migrations: bool = True
     migration_attempts: int = 10
 
 
