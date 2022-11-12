@@ -117,7 +117,7 @@ class ServiceConfig(Config):
     s3_config: S3Config
 
     env: Env = Env.TEST
-    run_migrations: bool = True
+    run_migrations: bool = False
     migration_attempts: int = 10
 
 
