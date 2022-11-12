@@ -19,6 +19,7 @@ from requestor.gunner import (
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
+    RequestTimeoutError,
 )
 from requestor.log import app_logger
 from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
@@ -265,6 +266,7 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         DuplicatedRecommendationsError,
         HTTPAuthorizationError,
         HTTPResponseNotOKError,
+        RequestTimeoutError,
     ) as e:
         reply, status = e, TrialStatus.failed  # type: ignore
 

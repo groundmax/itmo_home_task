@@ -90,6 +90,8 @@ class GunnerConfig(Config):
     success_trial_limit: int = 5
     failed_trial_limit: int = 20
 
+    timeout: int = 5
+
 
 class S3Config(Config):
     endpoint_url: str
