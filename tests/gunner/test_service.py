@@ -375,4 +375,4 @@ class TestGunnerNoAuth:
             notifier=notifier,
         )
 
-        spy.assert_called_once_with("Progress: 100.00%")
+        spy.assert_called_once_with("Progress: 0.00%")

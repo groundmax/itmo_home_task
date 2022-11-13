@@ -52,6 +52,7 @@ class TelegramConfig(Config):
     webhook_path_pattern: str = "/webhook/{bot_token}"
     team_models_display_limit: int = 10
     metric_by_assessor_display_precision: float = 0.7
+    delay_between_messages: int = 4
 
 
 class GSConfig(Config):
@@ -86,11 +87,13 @@ class GunnerConfig(Config):
     user_request_batch_size: int = 1_000
 
     started_trial_limit: int = 5
-    waiting_trial_limit: int = 5
+    waiting_trial_limit: int = 1
     success_trial_limit: int = 5
     failed_trial_limit: int = 20
 
     timeout: int = 5
+    # it doesn't really belong here, but it's convenient
+    progress_update_period: int = 8
 
 
 class S3Config(Config):

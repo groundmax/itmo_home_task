@@ -1,9 +1,11 @@
+import asyncio
 import typing as tp
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
 from aiogram import types
+from aiogram.utils.exceptions import RetryAfter
 from pydantic import BaseModel
 
 
@@ -72,7 +74,11 @@ class ProgressNotifier(BaseModel):
     message: types.Message
 
     async def send_progress_update(self, info: str) -> None:
-        await self.message.edit_text(info)
+        try:
+            await self.message.edit_text(info)
+        except RetryAfter as e:
+            await asyncio.sleep(e.timeout)
+            await self.send_progress_update(info)
 
     class Config:
         arbitrary_types_allowed = True

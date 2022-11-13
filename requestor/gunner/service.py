@@ -23,6 +23,8 @@ from .exceptions import (
 
 START_RANK_FROM: tp.Final = 1
 NOT_REQUESTED_STATUS: tp.Final = -999
+UPDATE_PERIOD: tp.Final = config.gunner_config.progress_update_period
+TIMEOUT: tp.Final = ClientTimeout(total=config.gunner_config.timeout)
 
 RecommendationRow = tp.Tuple[int, int, int]
 UserResponseInfo = tp.Tuple[int, tp.Dict[str, tp.Any], int]
@@ -160,17 +162,15 @@ class GunnerService(BaseModel):
     ) -> tp.List[UserRecoResponse]:
         results: tp.List[UserRecoResponse] = []
 
-        timeout = ClientTimeout(total=config.gunner_config.timeout)
-
         headers = self._get_auth_headers(api_token)
 
         try:
-            async with ClientSession(headers=headers, timeout=timeout) as session:
+            async with ClientSession(headers=headers, timeout=TIMEOUT) as session:
                 health_status = await self.ping(session, api_base_url)
 
                 self._validate_health_status(health_status)
 
-                for batch_num, users_batch in enumerate(self.users_batches, 1):
+                for batch_num, users_batch in enumerate(self.users_batches):
                     await self._get_recos_by_users_batch(
                         users_batch,
                         api_base_url,
@@ -179,7 +179,7 @@ class GunnerService(BaseModel):
                         results,
                     )
 
-                    if notifier is not None:
+                    if notifier is not None and batch_num % UPDATE_PERIOD == 0:
                         progress = f"Progress: {batch_num/(len(self.users_batches)):.2%}"
                         await notifier.send_progress_update(progress)
         except asyncio.TimeoutError:

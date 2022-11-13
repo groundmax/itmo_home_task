@@ -90,7 +90,7 @@ def validate_today_trial_stats(trial_stats: tp.Dict[TrialStatus, int]) -> None:
         raise ValueError(
             f"Количество моделей в очереди на проверку: {TrialStatus.waiting}, "
             f"предел: {TrialLimit.waiting}. "
-            "Пожалуйста, подождите пока завершаться проверки этих моделей."
+            "Пожалуйста, подождите пока завершатся проверки этих моделей."
         )
 
     if trial_stats.get(TrialStatus.failed, 0) >= TrialLimit.failed:

@@ -1,8 +1,12 @@
+import asyncio
 import traceback
+import typing as tp
+from datetime import datetime
 from functools import partial
 
 from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
+from aiogram.utils.exceptions import RetryAfter
 from aiogram.utils.markdown import bold, escape_md, text
 
 from requestor.db import (
@@ -25,6 +29,7 @@ from requestor.log import app_logger
 from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
 from requestor.services import App
 from requestor.settings import ServiceConfig, config
+from requestor.utils import utc_now
 
 from .bot_utils import (
     generate_models_description,
@@ -41,17 +46,50 @@ from .constants import (
     MODEL_NOT_FOUND_MSG,
     TEAM_NOT_FOUND_MSG,
 )
-from .exceptions import InvalidURLError
+from .exceptions import InvalidURLError, TooManyRequestsError
+
+DELAY: tp.Final = config.telegram_config.delay_between_messages
+PRECISION: tp.Final = config.telegram_config.metric_by_assessor_display_precision
+
+LAST_MSG_TS_BY_CHAT: tp.Dict[int, datetime] = {}
+
+
+def validate_request_time(message: types.Message) -> None:
+    if message.chat.id not in LAST_MSG_TS_BY_CHAT:
+        LAST_MSG_TS_BY_CHAT[message.chat.id] = utc_now()
+    else:
+        previous_request_time = LAST_MSG_TS_BY_CHAT[message.chat.id]
+        current_request_time = utc_now()
+        LAST_MSG_TS_BY_CHAT[message.chat.id] = current_request_time
+
+        if (current_request_time - previous_request_time).seconds < DELAY:
+            raise TooManyRequestsError(
+                f"{message.chat.title}({message.chat.id}) requested bot command too early"
+            )
 
 
 async def handle(handler, app: App, message: types.Message) -> None:
-    app_logger.info(f"Got msg {message.message_id} ({message.text}) from {message.chat.title}")
+    app_logger.info(
+        f"Got msg {message.message_id} ({message.text}) "
+        f"from '{message.chat.title}' ({message.chat.id})"
+    )
     try:
+        validate_request_time(message)
+        await handler(message, app)
+
+    except TooManyRequestsError as e:
+        app_logger.warning(e)
+    except RetryAfter as e:
+        app_logger.warning(e)
+        await asyncio.sleep(e.timeout)
         await handler(message, app)
     except Exception:
         app_logger.error(traceback.format_exc())
         raise
-    app_logger.info(f"Msg {message.message_id} ({message.text}) from {message.chat.title} handled")
+    app_logger.info(
+        f"Msg {message.message_id} ({message.text}) "
+        f"from '{message.chat.title}' ({message.chat.id}) handled"
+    )
 
 
 async def start_h(message: types.Message, app: App) -> None:
@@ -218,7 +256,9 @@ async def show_models_h(message: types.Message, app: App) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
+async def request_h(  # pylint: disable=too-many-branches # noqa: C901
+    message: types.Message, app: App
+) -> None:
     try:
         team = await app.db_service.get_team_by_chat(message.chat.id)
     except TeamNotFoundError:
@@ -249,6 +289,7 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         "Заявку приняли, начинаем запрашивать рекомендации от сервиса."
     )
 
+    await asyncio.sleep(DELAY)
     notifier = ProgressNotifier(message=message_to_update)
 
     try:
@@ -268,29 +309,33 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         HTTPResponseNotOKError,
         RequestTimeoutError,
     ) as e:
-        reply, status = e, TrialStatus.failed  # type: ignore
+        reply, status = e.args[0], TrialStatus.failed
+    except Exception:  # pylint: disable=broad-except
+        reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
 
     await app.db_service.update_trial_status(trial.trial_id, status=status)
 
     if status != TrialStatus.success:
         return await message.reply(reply)
 
+    await asyncio.sleep(DELAY)
     await notifier.send_progress_update(reply)
 
     prepared_recos = await app.assessor_service.prepare_recos(raw_recos)
     metrics_data = await app.assessor_service.estimate_recos(prepared_recos)
-    precision = config.telegram_config.metric_by_assessor_display_precision
 
     for metric in metrics_data:
         if metric.name == config.assessor_config.main_metric_name:
+            await asyncio.sleep(DELAY)
             await notifier.send_progress_update(
-                f"Результат {metric.name} = {metric.value:{precision}f}"
+                f"Результат {metric.name} = {metric.value:{PRECISION}f}"
             )
 
     await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
 
     rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)
     await app.gs_service.update_global_leaderboard(rows)
+    await asyncio.sleep(DELAY)
     await message.reply("Лидерборд обновлен, можете смотреть результаты.")
 
 
