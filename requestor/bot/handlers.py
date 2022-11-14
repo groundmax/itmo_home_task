@@ -40,14 +40,29 @@ from .constants import (
 )
 
 
+def get_message_description(message: types.Message) -> str:
+    user = message.from_user["username"]
+    msg_id = message.message_id
+    msg_text = message.text
+    msg_desc = f"[{msg_id} ({msg_text}), from: {user}]"
+
+    chat = message.chat.title
+    if chat is not None:
+        msg_desc = msg_desc[:-1] + f", chat: {chat}]"
+
+    return msg_desc
+
+
 async def handle(handler, app: App, message: types.Message) -> None:
-    app_logger.info(f"Got msg {message.message_id} ({message.text}) from {message.chat.title}")
+    msg_desc = get_message_description(message)
+
+    app_logger.info(f"Got msg {msg_desc}")
     try:
         await handler(message, app)
     except Exception:
         app_logger.error(traceback.format_exc())
         raise
-    app_logger.info(f"Msg {message.message_id} ({message.text}) from {message.chat.title} handled")
+    app_logger.info(f"Msg {msg_desc} handled")
 
 
 async def start_h(message: types.Message, app: App) -> None:
