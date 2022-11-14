@@ -156,7 +156,7 @@ class BotCommands(Enum):
                 descriptions.append(f"/{command.name}\n{command.value.long_description}")
 
         descriptions.append(
-            "Важно! У бота есть задержка. Он отвечает на команды 1 раз в {DELAY} секунды."
+            f"Важно! У бота есть задержка. Он отвечает на команды 1 раз в {DELAY} секунды."
         )
 
         return "\n\n".join(descriptions)
