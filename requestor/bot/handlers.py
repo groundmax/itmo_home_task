@@ -237,7 +237,7 @@ async def add_model_h(message: types.Message, app: App) -> None:
         await app.db_service.add_model(
             ModelInfo(team_id=team.team_id, name=name, description=description)
         )
-        reply = f"Модель `{name}` успешно добавлена. Воспользуйтесь командой /show_models"
+        reply = f"Модель `{name}` успешно добавлена."
     except DuplicatedModelError:
         reply = text(
             "Модель с таким именем уже существует.",
