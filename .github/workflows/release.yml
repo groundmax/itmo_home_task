@@ -11,7 +11,7 @@ env:
 
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-20.04
 
     steps:
@@ -57,3 +57,29 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-20.04
+    env:
+          SSH_USER_HOST: ${{ secrets.YC_VM_USER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.YC_VM_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.YC_VM_SSH_KNOWN_HOSTS }}
+
+    steps:
+
+      - name: Get SHORT_SHA
+        run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          sudo chmod 600 ~/.ssh/id_rsa
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Pull image
+        run: ssh $SSH_USER_HOST ./service/pull_image.sh $SHORT_SHA
+
+      - name: Update service
+        run: ssh $SSH_USER_HOST ./service/create_or_update_service.sh $SHORT_SHA
