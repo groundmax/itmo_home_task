@@ -1,9 +1,11 @@
 from .exceptions import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
+    RequestTimeoutError,
 )
 from .service import GunnerService, UserRecoResponse
 
@@ -14,5 +16,7 @@ __all__ = (
     "RecommendationsLimitSizeError",
     "DuplicatedRecommendationsError",
     "UserRecoResponse",
-    "AuthorizationError",
+    "HTTPAuthorizationError",
+    "HTTPResponseNotOKError",
+    "RequestTimeoutError",
 )

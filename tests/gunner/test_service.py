@@ -3,13 +3,16 @@ from http import HTTPStatus
 
 import pytest
 from aiohttp import ClientSession
+from asyncmock import AsyncMock
 from pydantic import ValidationError
 from pytest_httpserver import HTTPServer, HeaderValueMatcher
+from pytest_mock import MockerFixture
 
 from requestor.gunner import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
     GunnerService,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
@@ -40,12 +43,18 @@ class TestGunnerAuth:
     ) -> None:
         reco_size = service_config.assessor_config.reco_size
 
+        httpserver.expect_request(
+            "/health",
+            headers=auth_headers,
+            header_value_matcher=header_value_matcher,
+        ).respond_with_data("DATA")
+
         expected = []
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
                 httpserver.expect_request(
-                    f"/{model_name}/{user_id}",
+                    f"/reco/{model_name}/{user_id}",
                     headers=auth_headers,
                     header_value_matcher=header_value_matcher,
                 ).respond_with_json(
@@ -81,7 +90,7 @@ class TestGunnerAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 httpserver.expect_request(
-                    f"/model_name/{user_id}",
+                    f"/reco/model_name/{user_id}",
                     headers=auth_headers,
                     header_value_matcher=header_value_matcher,
                 ).respond_with_data(
@@ -89,7 +98,7 @@ class TestGunnerAuth:
                     status=HTTPStatus.UNAUTHORIZED,
                 )
 
-        with pytest.raises(AuthorizationError):
+        with pytest.raises(HTTPAuthorizationError):
             await gunner_service.get_recos(
                 httpserver.url_for("/"),
                 "model_name",
@@ -156,7 +165,9 @@ class TestGunnerNoAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
-                httpserver.expect_request(f"/{model_name}/{user_id}").respond_with_json(response)
+                httpserver.expect_request(f"/reco/{model_name}/{user_id}").respond_with_json(
+                    response
+                )
                 expected.append(gen_model_user_reco_response(user_id, reco_size))
 
         # httpserver.url_for("/") gives http://localhost:{port}//
@@ -181,6 +192,34 @@ class TestGunnerNoAuth:
         assert status == HTTPStatus.OK
 
     @pytest.mark.parametrize(
+        "health_http_status,http_exception",
+        (
+            (HTTPStatus.INTERNAL_SERVER_ERROR, HTTPResponseNotOKError),
+            (HTTPStatus.FORBIDDEN, HTTPAuthorizationError),
+            (HTTPStatus.UNAUTHORIZED, HTTPAuthorizationError),
+            (HTTPStatus.NOT_FOUND, HTTPResponseNotOKError),
+            (HTTPStatus.BAD_GATEWAY, HTTPResponseNotOKError),
+        ),
+    )
+    async def test_get_recos_http_status_not_ok_before_requesting(
+        self,
+        httpserver: HTTPServer,
+        gunner_service: GunnerService,
+        health_http_status: int,
+        http_exception: str,
+    ) -> None:
+
+        httpserver.expect_request("/health").respond_with_data("DATA", status=health_http_status)
+
+        with pytest.raises(
+            http_exception, match=rf"HTTPError: {health_http_status}"
+        ):  # type: ignore
+            await gunner_service.get_recos(
+                httpserver.url_for("/"),
+                "model_name",
+            )
+
+    @pytest.mark.parametrize(
         "http_status",
         (
             HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -188,7 +227,7 @@ class TestGunnerNoAuth:
             HTTPStatus.BAD_GATEWAY,
         ),
     )
-    async def test_get_recos_http_status_not_ok(
+    async def test_get_recos_http_status_not_ok_while_requesting(
         self,
         httpserver: HTTPServer,
         service_config: ServiceConfig,
@@ -202,7 +241,7 @@ class TestGunnerNoAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
-                httpserver.expect_request(f"/model_name/{user_id}").respond_with_json(
+                httpserver.expect_request(f"/reco/model_name/{user_id}").respond_with_json(
                     response,
                     status=http_status,
                 )
@@ -306,3 +345,36 @@ class TestGunnerNoAuth:
                 httpserver.url_for("/"),
                 "model_name",
             )
+
+    async def test_get_recos_with_notifier(
+        self,
+        httpserver: HTTPServer,
+        service_config: ServiceConfig,
+        users_batches: tp.List[tp.List[int]],
+        gunner_service: GunnerService,
+        mocker: MockerFixture,
+    ) -> None:
+        reco_size = service_config.assessor_config.reco_size
+
+        notifier = AsyncMock()
+        notifier.send_progress_update = AsyncMock()
+        spy = mocker.spy(notifier, "send_progress_update")
+
+        httpserver.expect_request(
+            "/health",
+        ).respond_with_data("DATA")
+
+        for users_batch in users_batches:
+            for user_id in users_batch:
+                response = gen_json_reco_response(user_id, reco_size)
+                httpserver.expect_request(f"/reco/model_name/{user_id}",).respond_with_json(
+                    response,
+                )
+
+        await gunner_service.get_recos(
+            httpserver.url_for("/"),
+            "model_name",
+            notifier=notifier,
+        )
+
+        spy.assert_called_once_with("Progress: 0.00%")
