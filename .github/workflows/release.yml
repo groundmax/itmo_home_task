@@ -82,7 +82,7 @@ jobs:
       - name: Pull image
         uses: appleboy/ssh-action@master
         env:
-          SHORT_SHA: $SHORT_SHA
+          SHORT_SHA: ${{ env.SHORT_SHA }}
         with:
           envs: SHORT_SHA
           host: ${{ secrets.YC_VM_HOST }}
