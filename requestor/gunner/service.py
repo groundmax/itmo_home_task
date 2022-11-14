@@ -3,7 +3,7 @@ import typing as tp
 from asyncio import Task
 from http import HTTPStatus
 
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout, ContentTypeError
 from pydantic import validator
 from pydantic.main import BaseModel
 
@@ -76,7 +76,12 @@ class GunnerService(BaseModel):
             if resp_size > config.gunner_config.max_resp_bytes_size:
                 raise HugeResponseSizeError(f"Got too big response size for user `{user_id}`.")
 
-            resp = await response.json()
+            try:
+                resp = await response.json()
+            except ContentTypeError as e:
+                text = await response.text()
+                e.args = e.args + (text[:10000],)
+                raise e
 
             return user_id, resp, response.status
 

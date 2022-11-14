@@ -8,6 +8,7 @@ from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
 from aiogram.utils.exceptions import RetryAfter
 from aiogram.utils.markdown import bold, escape_md, text
+from aiohttp import ContentTypeError
 
 from requestor.db import (
     DuplicatedModelError,
@@ -320,6 +321,12 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
+    except ContentTypeError as e:
+        reply, status = e.args[0], TrialStatus.failed
+        if len(e.args) > 1:
+            reply += "\n" + e.args[-1]
+        app_logger.warning(f"Handled error: {e!r}")
+
     except Exception as e:  # pylint: disable=broad-except
         reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
         app_logger.error(f"Unhandled error: {e!r}")
