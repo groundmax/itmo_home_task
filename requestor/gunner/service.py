@@ -19,6 +19,7 @@ from .exceptions import (
     RequestLimitByUserError,
     RequestTimeoutError,
 )
+from ..log import app_logger
 
 START_RANK_FROM: tp.Final = 1
 NOT_REQUESTED_STATUS: tp.Final = -999
@@ -80,7 +81,8 @@ class GunnerService(BaseModel):
                 resp = await response.json()
             except ContentTypeError as e:
                 text = await response.text()
-                e.args = e.args + (text[:10000],)
+                app_logger.warning(f"ContentTypeError. text: {text}")
+                e.custom__response_text = str(text[:10000])
                 raise e
 
             return user_id, resp, response.status

@@ -323,8 +323,7 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
         app_logger.warning(f"Handled error: {e!r}")
     except ContentTypeError as e:
         reply, status = e.args[0], TrialStatus.failed
-        if len(e.args) > 1:
-            reply += "\n" + e.args[-1]
+        reply += "\n" + e.custom__response_text
         app_logger.warning(f"Handled error: {e!r}")
 
     except Exception as e:  # pylint: disable=broad-except
