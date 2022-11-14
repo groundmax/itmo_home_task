@@ -1,4 +1,5 @@
 import typing as tp
+from urllib.parse import urlsplit
 
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
@@ -7,6 +8,20 @@ from requestor.models import Model, TeamInfo, TrialStatus
 from requestor.settings import TrialLimit
 
 from .constants import DATETIME_FORMAT
+from .exceptions import InvalidURLError
+
+
+def is_url_valid(url: str) -> bool:
+    try:
+        scheme, netloc, _, _, _ = urlsplit(url)
+        return all([scheme, netloc])
+    except Exception:  # pylint: disable=broad-except
+        return False
+
+
+def url_validator(url: str) -> None:
+    if not is_url_valid(url):
+        raise InvalidURLError("Введенный url некорректен, пожалуйста, проверьте его.")
 
 
 # TODO: somehow try generalize this func to reduce duplicate code
@@ -22,10 +37,16 @@ def parse_msg_with_team_info(
         api_key = None
 
     try:
+        url_validator(api_base_url)
+
         if api_base_url.endswith("/"):
             api_base_url = api_base_url[:-1]
+
         return token, TeamInfo(
-            title=title, chat_id=message.chat.id, api_base_url=api_base_url, api_key=api_key
+            title=title,
+            chat_id=message.chat.id,
+            api_base_url=api_base_url,
+            api_key=api_key,
         )
     except NameError:
         return None, None
@@ -39,8 +60,7 @@ def parse_msg_with_model_info(
     if n_args == 2:
         name, description = args
     elif n_args == 1:
-        name = args[0]
-        description = None
+        name, description = args[0], None
 
     try:
         return name, description
@@ -48,14 +68,14 @@ def parse_msg_with_model_info(
         return None, None
 
 
-def parse_msg_with_request_info(message: types.Message) -> tp.Optional[str]:
+def parse_msg_with_request_info(message: types.Message) -> str:
     args = message.get_args().split()
     n_args = len(args)
 
     if n_args == 1:
         return args[0]
 
-    return None
+    raise ValueError()
 
 
 def validate_today_trial_stats(trial_stats: tp.Dict[TrialStatus, int]) -> None:
@@ -68,8 +88,9 @@ def validate_today_trial_stats(trial_stats: tp.Dict[TrialStatus, int]) -> None:
 
     if trial_stats.get(TrialStatus.waiting, 0) >= TrialLimit.waiting:
         raise ValueError(
-            f"Сейчас в очереди на проверку уже есть {TrialLimit.waiting} моделей. "
-            "Пожалуйста, подождите пока завершаться проверки этих моделей."
+            f"Количество моделей в очереди на проверку: {TrialStatus.waiting}, "
+            f"предел: {TrialLimit.waiting}. "
+            "Пожалуйста, подождите пока завершатся проверки этих моделей."
         )
 
     if trial_stats.get(TrialStatus.failed, 0) >= TrialLimit.failed:

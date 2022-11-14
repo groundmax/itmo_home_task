@@ -7,6 +7,8 @@ from aiogram.utils.markdown import text
 
 from requestor.settings import TrialLimit, config
 
+DELAY: tp.Final = config.telegram_config.delay_between_messages
+
 
 @dataclass
 class CommandDescription:
@@ -115,7 +117,7 @@ commands_description = (
                 f"не более {TrialLimit.failed} неудачных, "
                 f"не более {TrialLimit.waiting} одновременных."
             ),
-            f"Каждый юзер должен иметь ровно: {config.assessor_config.reco_size} рекоммендаций.",
+            f"Каждый юзер должен иметь ровно {config.assessor_config.reco_size} рекоммендаций.",
             sep="\n",
         ),
     ),
@@ -152,5 +154,9 @@ class BotCommands(Enum):
         for command in BotCommands:
             if command not in (BotCommands.start, BotCommands.help):
                 descriptions.append(f"/{command.name}\n{command.value.long_description}")
+
+        descriptions.append(
+            "Важно! У бота есть задержка. Он отвечает на команды 1 раз в {DELAY} секунды."
+        )
 
         return "\n\n".join(descriptions)

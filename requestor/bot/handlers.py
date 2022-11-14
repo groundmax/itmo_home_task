@@ -1,8 +1,12 @@
+import asyncio
 import traceback
+import typing as tp
+from datetime import datetime
 from functools import partial
 
 from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
+from aiogram.utils.exceptions import RetryAfter
 from aiogram.utils.markdown import bold, escape_md, text
 
 from requestor.db import (
@@ -13,22 +17,26 @@ from requestor.db import (
     TokenNotFoundError,
 )
 from requestor.gunner import (
-    AuthorizationError,
     DuplicatedRecommendationsError,
+    HTTPAuthorizationError,
+    HTTPResponseNotOKError,
     HugeResponseSizeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
+    RequestTimeoutError,
 )
 from requestor.log import app_logger
-from requestor.models import ModelInfo, TeamInfo, Trial, TrialStatus
+from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
 from requestor.services import App
 from requestor.settings import ServiceConfig, config
+from requestor.utils import utc_now
 
 from .bot_utils import (
     generate_models_description,
     parse_msg_with_model_info,
     parse_msg_with_request_info,
     parse_msg_with_team_info,
+    url_validator,
     validate_today_trial_stats,
 )
 from .commands import BotCommands
@@ -38,6 +46,26 @@ from .constants import (
     MODEL_NOT_FOUND_MSG,
     TEAM_NOT_FOUND_MSG,
 )
+from .exceptions import InvalidURLError, TooManyRequestsError
+
+DELAY: tp.Final = config.telegram_config.delay_between_messages
+PRECISION: tp.Final = config.telegram_config.metric_by_assessor_display_precision
+
+LAST_MSG_TS_BY_CHAT: tp.Dict[int, datetime] = {}
+
+
+def validate_request_time(message: types.Message) -> None:
+    if message.chat.id not in LAST_MSG_TS_BY_CHAT:
+        LAST_MSG_TS_BY_CHAT[message.chat.id] = utc_now()
+    else:
+        previous_request_time = LAST_MSG_TS_BY_CHAT[message.chat.id]
+        current_request_time = utc_now()
+        LAST_MSG_TS_BY_CHAT[message.chat.id] = current_request_time
+
+        if (current_request_time - previous_request_time).seconds < DELAY:
+            raise TooManyRequestsError(
+                f"{message.chat.title}({message.chat.id}) requested bot command too early"
+            )
 
 
 def get_message_description(message: types.Message) -> str:
@@ -58,6 +86,14 @@ async def handle(handler, app: App, message: types.Message) -> None:
 
     app_logger.info(f"Got msg {msg_desc}")
     try:
+        validate_request_time(message)
+        await handler(message, app)
+
+    except TooManyRequestsError as e:
+        app_logger.warning(e)
+    except RetryAfter as e:
+        app_logger.warning(e)
+        await asyncio.sleep(e.timeout)
         await handler(message, app)
     except Exception:
         app_logger.error(traceback.format_exc())
@@ -80,7 +116,10 @@ async def help_h(event: types.Message, app: App) -> None:
 
 
 async def register_team_h(message: types.Message, app: App) -> None:
-    token, team_info = parse_msg_with_team_info(message)
+    try:
+        token, team_info = parse_msg_with_team_info(message)
+    except InvalidURLError as e:
+        return await message.reply(e)
 
     if team_info is None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
@@ -119,13 +158,13 @@ async def register_team_h(message: types.Message, app: App) -> None:
     await message.reply(reply)
 
 
-async def update_team_h(message: types.Message, app: App) -> None:
+async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
+    message: types.Message, app: App
+) -> None:
     try:
         current_team_info = await app.db_service.get_team_by_chat(message.chat.id)
     except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
-
-    # TODO: think of way to generalize this pattern to reduce duplicate code
 
     try:
         update_field, update_value = message.get_args().split()
@@ -135,8 +174,13 @@ async def update_team_h(message: types.Message, app: App) -> None:
     if update_field not in AVAILABLE_FOR_UPDATE:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
-    if update_field == "api_base_url" and update_value.endswith("/"):
-        update_value = update_value[:-1]
+    if update_field == "api_base_url":
+        try:
+            url_validator(update_value)
+        except InvalidURLError as e:
+            return await message.reply(e)
+        if update_value.endswith("/"):
+            update_value = update_value[:-1]
 
     updated_team_info = TeamInfo(**current_team_info.dict())
 
@@ -193,7 +237,7 @@ async def add_model_h(message: types.Message, app: App) -> None:
         await app.db_service.add_model(
             ModelInfo(team_id=team.team_id, name=name, description=description)
         )
-        reply = f"Модель `{name}` успешно добавлена. Воспользуйтесь командой /show_models"
+        reply = f"Модель `{name}` успешно добавлена."
     except DuplicatedModelError:
         reply = text(
             "Модель с таким именем уже существует.",
@@ -221,15 +265,17 @@ async def show_models_h(message: types.Message, app: App) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
+async def request_h(  # pylint: disable=too-many-branches # noqa: C901
+    message: types.Message, app: App
+) -> None:
     try:
         team = await app.db_service.get_team_by_chat(message.chat.id)
     except TeamNotFoundError:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
-    model_name = parse_msg_with_request_info(message)
-
-    if model_name is None:
+    try:
+        model_name = parse_msg_with_request_info(message)
+    except ValueError:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
     try:
@@ -248,12 +294,18 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         model_id=model.model_id, status=TrialStatus.waiting
     )
 
-    await message.reply("Заявку приняли, начинаем запрашивать рекомендации от сервиса.")
+    message_to_update = await message.reply(
+        "Заявку приняли, начинаем запрашивать рекомендации от сервиса."
+    )
+
+    await asyncio.sleep(DELAY)
+    notifier = ProgressNotifier(message=message_to_update)
 
     try:
         raw_recos = await app.gunner_service.get_recos(
             api_base_url=team.api_base_url,
             model_name=model_name,
+            notifier=notifier,
             api_token=team.api_key,
         )
         reply, status = "Рекомендации от сервиса успешно получили!", TrialStatus.success
@@ -262,23 +314,37 @@ async def request_h(message: types.Message, app: App) -> None:  # noqa: C901
         RecommendationsLimitSizeError,
         RequestLimitByUserError,
         DuplicatedRecommendationsError,
-        AuthorizationError,
+        HTTPAuthorizationError,
+        HTTPResponseNotOKError,
+        RequestTimeoutError,
     ) as e:
-        reply, status = e, TrialStatus.failed  # type: ignore
+        reply, status = e.args[0], TrialStatus.failed
+    except Exception:  # pylint: disable=broad-except
+        reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
 
     await app.db_service.update_trial_status(trial.trial_id, status=status)
 
     if status != TrialStatus.success:
         return await message.reply(reply)
 
-    await message.reply(reply)
+    await asyncio.sleep(DELAY)
+    await notifier.send_progress_update(reply)
 
     prepared_recos = await app.assessor_service.prepare_recos(raw_recos)
     metrics_data = await app.assessor_service.estimate_recos(prepared_recos)
+
+    for metric in metrics_data:
+        if metric.name == config.assessor_config.main_metric_name:
+            await asyncio.sleep(DELAY)
+            await notifier.send_progress_update(
+                f"Результат {metric.name} = {metric.value:{PRECISION}f}"
+            )
+
     await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
 
     rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)
     await app.gs_service.update_global_leaderboard(rows)
+    await asyncio.sleep(DELAY)
     await message.reply("Лидерборд обновлен, можете смотреть результаты.")
 
 
