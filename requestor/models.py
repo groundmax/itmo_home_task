@@ -80,5 +80,12 @@ class ProgressNotifier(BaseModel):
             await asyncio.sleep(e.timeout)
             await self.send_progress_update(info)
 
+    async def reply(self, info: str) -> None:
+        try:
+            await self.message.reply(info)
+        except RetryAfter as e:
+            await asyncio.sleep(e.timeout)
+            await self.reply(info)
+
     class Config:
         arbitrary_types_allowed = True

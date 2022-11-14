@@ -345,7 +345,7 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
     rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)
     await app.gs_service.update_global_leaderboard(rows)
     await asyncio.sleep(DELAY)
-    await notifier.send_progress_update("Лидерборд обновлен, можете смотреть результаты.")
+    await notifier.reply("Лидерборд обновлен, можете смотреть результаты.")
 
 
 async def other_messages_h(message: types.Message, app: App) -> None:
