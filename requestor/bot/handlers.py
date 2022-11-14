@@ -319,8 +319,11 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
         RequestTimeoutError,
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
-    except Exception:  # pylint: disable=broad-except
+        app_logger.warning(f"Handled error: {e!r}")
+    except Exception as e:  # pylint: disable=broad-except
         reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
+        app_logger.error(f"Unhandled error: {e!r}")
+        app_logger.error(traceback.format_exc())
 
     await app.db_service.update_trial_status(trial.trial_id, status=status)
 
