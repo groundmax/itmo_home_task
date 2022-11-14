@@ -71,14 +71,6 @@ jobs:
       - name: Get SHORT_SHA
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
 
-      - name: Debug
-        uses: appleboy/ssh-action@master
-        with:
-          host: 51.250.54.10
-          username: requestor
-          key: ${{ secrets.YC_VM_SSH_KEY }}
-          script: whoami
-
       - name: Pull image
         uses: appleboy/ssh-action@master
         env:
@@ -90,17 +82,13 @@ jobs:
           key: ${{ secrets.YC_VM_SSH_KEY }}
           script: ./service/pull_image.sh $SHORT_SHA
 
-
-#      - name: Prepare SSH
-#        run: |
-#          mkdir -p ~/.ssh/
-#          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-#          sudo chmod 600 ~/.ssh/id_rsa
-#          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-#
-#      - name: Pull image
-#        run: ssh $SSH_USER_HOST ./service/pull_image.sh $SHORT_SHA
-#
-#
-#      - name: Update service
-#        run: ssh $SSH_USER_HOST ./service/create_or_update_service.sh $SHORT_SHA
+      - name: Update service
+          uses: appleboy/ssh-action@master
+          env:
+            SHORT_SHA: ${{ env.SHORT_SHA }}
+          with:
+            envs: SHORT_SHA
+            host: ${{ secrets.YC_VM_HOST }}
+            username: ${{ secrets.YC_VM_USER }}
+            key: ${{ secrets.YC_VM_SSH_KEY }}
+            script: ./service/create_or_update_service.sh $SHORT_SHA
