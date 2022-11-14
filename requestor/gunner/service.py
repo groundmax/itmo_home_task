@@ -2,7 +2,6 @@ import asyncio
 import typing as tp
 from asyncio import Task
 from http import HTTPStatus
-from urllib.parse import urlsplit
 
 from aiohttp import ClientSession, ClientTimeout
 from pydantic import validator
@@ -82,9 +81,8 @@ class GunnerService(BaseModel):
             return user_id, resp, response.status
 
     async def ping(self, session: ClientSession, api_base_url: str) -> int:
-        scheme, netloc, _, _, _ = urlsplit(api_base_url)
 
-        async with session.get(f"{scheme}://{netloc}/health") as response:
+        async with session.get(f"{api_base_url}/health") as response:
             return response.status
 
     async def get_tasks(

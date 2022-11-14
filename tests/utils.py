@@ -266,4 +266,4 @@ def prepare_http_responses(
                 response = gen_response_based_on_type(user_id, reco_size, response_type)
             else:
                 response = gen_json_reco_response(user_id, reco_size)
-            httpserver.expect_request(f"/model_name/{user_id}").respond_with_json(response)
+            httpserver.expect_request(f"/reco/model_name/{user_id}").respond_with_json(response)

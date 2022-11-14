@@ -54,7 +54,7 @@ class TestGunnerAuth:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
                 httpserver.expect_request(
-                    f"/{model_name}/{user_id}",
+                    f"/reco/{model_name}/{user_id}",
                     headers=auth_headers,
                     header_value_matcher=header_value_matcher,
                 ).respond_with_json(
@@ -90,7 +90,7 @@ class TestGunnerAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 httpserver.expect_request(
-                    f"/model_name/{user_id}",
+                    f"/reco/model_name/{user_id}",
                     headers=auth_headers,
                     header_value_matcher=header_value_matcher,
                 ).respond_with_data(
@@ -165,7 +165,9 @@ class TestGunnerNoAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
-                httpserver.expect_request(f"/{model_name}/{user_id}").respond_with_json(response)
+                httpserver.expect_request(f"/reco/{model_name}/{user_id}").respond_with_json(
+                    response
+                )
                 expected.append(gen_model_user_reco_response(user_id, reco_size))
 
         # httpserver.url_for("/") gives http://localhost:{port}//
@@ -239,7 +241,7 @@ class TestGunnerNoAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
-                httpserver.expect_request(f"/model_name/{user_id}").respond_with_json(
+                httpserver.expect_request(f"/reco/model_name/{user_id}").respond_with_json(
                     response,
                     status=http_status,
                 )
@@ -365,7 +367,7 @@ class TestGunnerNoAuth:
         for users_batch in users_batches:
             for user_id in users_batch:
                 response = gen_json_reco_response(user_id, reco_size)
-                httpserver.expect_request(f"/model_name/{user_id}",).respond_with_json(
+                httpserver.expect_request(f"/reco/model_name/{user_id}",).respond_with_json(
                     response,
                 )
 

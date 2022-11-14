@@ -81,7 +81,7 @@ class AssessorConfig(Config):
 
 
 class GunnerConfig(Config):
-    request_url_template: str = "{api_base_url}/{model_name}/{user_id}"
+    request_url_template: str = "{api_base_url}/reco/{model_name}/{user_id}"
     max_resp_bytes_size: int = 10_000
     max_n_times_requested: int = 3
     user_request_batch_size: int = 1_000
