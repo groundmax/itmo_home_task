@@ -68,11 +68,23 @@ def validate_request_time(message: types.Message) -> None:
             )
 
 
+def get_message_description(message: types.Message) -> str:
+    user = message.from_user["username"]
+    msg_id = message.message_id
+    msg_text = message.text
+    msg_desc = f"[{msg_id} ({msg_text}), from: {user}]"
+
+    chat = message.chat.title
+    if chat is not None:
+        msg_desc = msg_desc[:-1] + f", chat: {chat}]"
+
+    return msg_desc
+
+
 async def handle(handler, app: App, message: types.Message) -> None:
-    app_logger.info(
-        f"Got msg {message.message_id} ({message.text}) "
-        f"from '{message.chat.title}' ({message.chat.id})"
-    )
+    msg_desc = get_message_description(message)
+
+    app_logger.info(f"Got msg {msg_desc}")
     try:
         validate_request_time(message)
         await handler(message, app)
@@ -86,10 +98,7 @@ async def handle(handler, app: App, message: types.Message) -> None:
     except Exception:
         app_logger.error(traceback.format_exc())
         raise
-    app_logger.info(
-        f"Msg {message.message_id} ({message.text}) "
-        f"from '{message.chat.title}' ({message.chat.id}) handled"
-    )
+    app_logger.info(f"Msg {msg_desc} handled")
 
 
 async def start_h(message: types.Message, app: App) -> None:
