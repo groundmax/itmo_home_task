@@ -72,12 +72,12 @@ jobs:
         run: echo "SHORT_SHA=`echo ${GITHUB_SHA} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: Debug
-          uses: appleboy/ssh-action@master
-          with:
-            host: 51.250.54.10
-            username: requestor
-            key: ${{ secrets.YC_VM_SSH_KEY }}
-            script: whoami
+        uses: appleboy/ssh-action@master
+        with:
+          host: 51.250.54.10
+          username: requestor
+          key: ${{ secrets.YC_VM_SSH_KEY }}
+          script: whoami
 
       - name: Prepare SSH
         run: |
