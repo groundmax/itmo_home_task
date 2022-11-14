@@ -83,12 +83,12 @@ jobs:
           script: ./service/pull_image.sh $SHORT_SHA
 
       - name: Update service
-          uses: appleboy/ssh-action@master
-          env:
-            SHORT_SHA: ${{ env.SHORT_SHA }}
-          with:
-            envs: SHORT_SHA
-            host: ${{ secrets.YC_VM_HOST }}
-            username: ${{ secrets.YC_VM_USER }}
-            key: ${{ secrets.YC_VM_SSH_KEY }}
-            script: ./service/create_or_update_service.sh $SHORT_SHA
+        uses: appleboy/ssh-action@master
+        env:
+          SHORT_SHA: ${{ env.SHORT_SHA }}
+        with:
+          envs: SHORT_SHA
+          host: ${{ secrets.YC_VM_HOST }}
+          username: ${{ secrets.YC_VM_USER }}
+          key: ${{ secrets.YC_VM_SSH_KEY }}
+          script: ./service/create_or_update_service.sh $SHORT_SHA
