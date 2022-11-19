@@ -8,7 +8,7 @@ from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
 from aiogram.utils.exceptions import RetryAfter
 from aiogram.utils.markdown import bold, escape_md, text
-from aiohttp import ContentTypeError
+from aiohttp import ClientOSError, ServerDisconnectedError
 
 from requestor.db import (
     DuplicatedModelError,
@@ -322,6 +322,10 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
         IncorrectContentTypeError,
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
+        app_logger.warning(f"Handled error: {e!r}")
+        app_logger.warning(traceback.format_exc())
+    except (ClientOSError, ServerDisconnectedError) as e:
+        reply, status = f"Возникла ошибка при обращении к сервису: {e!r}", TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
         app_logger.warning(traceback.format_exc())
     except Exception as e:  # pylint: disable=broad-except
