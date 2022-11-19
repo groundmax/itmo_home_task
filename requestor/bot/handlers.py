@@ -25,6 +25,7 @@ from requestor.gunner import (
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
+    IncorrectContentTypeError,
 )
 from requestor.log import app_logger
 from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
@@ -318,14 +319,11 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
         HTTPAuthorizationError,
         HTTPResponseNotOKError,
         RequestTimeoutError,
+        IncorrectContentTypeError,
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
-    except ContentTypeError as e:
-        reply, status = str(e.args[0]), TrialStatus.failed
-        reply += "\n" + e.custom__response_text
-        app_logger.warning(f"Handled error: {e!r}")
-
+        app_logger.warning(traceback.format_exc())
     except Exception as e:  # pylint: disable=broad-except
         reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
         app_logger.error(f"Unhandled error: {e!r}")

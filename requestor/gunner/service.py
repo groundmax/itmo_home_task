@@ -18,6 +18,7 @@ from .exceptions import (
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
+    IncorrectContentTypeError,
 )
 from ..log import app_logger
 
@@ -82,8 +83,10 @@ class GunnerService(BaseModel):
             except ContentTypeError as e:
                 text = await response.text()
                 app_logger.warning(f"ContentTypeError. text: {text}")
-                e.custom__response_text = str(text[:10000])
-                raise e
+                max_length = config.gunner_config.length_to_cut_when_incorrect_content_type
+                if len(text) > max_length:
+                    text = text[:max_length] + "..."
+                raise IncorrectContentTypeError(f"Got not JSON message: {text}")
 
             return user_id, resp, response.status
 

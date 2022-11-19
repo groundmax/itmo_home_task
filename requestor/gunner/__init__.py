@@ -6,6 +6,7 @@ from .exceptions import (
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
+    IncorrectContentTypeError,
 )
 from .service import GunnerService, UserRecoResponse
 
@@ -19,4 +20,5 @@ __all__ = (
     "HTTPAuthorizationError",
     "HTTPResponseNotOKError",
     "RequestTimeoutError",
+    "IncorrectContentTypeError",
 )
