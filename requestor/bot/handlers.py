@@ -185,10 +185,10 @@ async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
         if update_value.endswith("/"):
             update_value = update_value[:-1]
 
-    updated_team_info = TeamInfo(**current_team_info.dict())
-
+    updated_team_info_dict = current_team_info.dict()
+    updated_team_info_dict[update_field] = update_value
     try:
-        setattr(updated_team_info, update_field, update_value)
+        updated_team_info = TeamInfo(**updated_team_info_dict)
     except ValidationError as e:
         err = e.errors()[0]
         reply = f"Задано недопустимое значение: {err['msg']}"
