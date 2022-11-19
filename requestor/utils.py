@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import io
 import typing as tp
@@ -38,6 +39,22 @@ def do_with_retries(  # type: ignore[return]
             app_logger.info(f"Caught exception on attempt {attempt}: {e!r}")
             if attempt == max_attempts:
                 raise
+
+
+async def async_do_with_retries(  # type: ignore[return]
+    func: tp.Awaitable[T],
+    exc_type: tp.Union[tp.Type[Exception], tp.Tuple[tp.Type[Exception], ...]],
+    max_attempts: int,
+    interval: int
+) -> T:
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await func
+        except exc_type as e:
+            app_logger.error(f"Caught exception on attempt {attempt}: {e!r}")
+            if attempt == max_attempts:
+                raise
+            await asyncio.sleep(interval)
 
 
 def chunkify(array: tp.List[T], chunk_size: int) -> tp.List[tp.List[T]]:

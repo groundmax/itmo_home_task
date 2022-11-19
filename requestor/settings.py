@@ -41,6 +41,8 @@ class DBPoolConfig(Config):
 
 class DBConfig(Config):
     db_pool_config: DBPoolConfig
+    n_attempts: int = 3
+    attempts_interval: int = 2
 
 
 class TelegramConfig(Config):
@@ -95,6 +97,7 @@ class GunnerConfig(Config):
     # it doesn't really belong here, but it's convenient
     progress_update_period: int = 8
     length_to_cut_when_incorrect_content_type: int = 1000
+
 
 class S3Config(Config):
     endpoint_url: str
