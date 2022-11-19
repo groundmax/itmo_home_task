@@ -100,7 +100,7 @@ async def handle(handler, app: App, message: types.Message) -> None:
         await handler(message, app)
     except Exception:
         app_logger.error(traceback.format_exc())
-        raise
+        await message.reply("Что-то пошло не так. Попробуйте позже")
     app_logger.info(f"Msg {msg_desc} handled")
 
 
