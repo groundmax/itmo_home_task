@@ -45,7 +45,7 @@ async def async_do_with_retries(  # type: ignore[return]
     func: tp.Awaitable[T],
     exc_type: tp.Union[tp.Type[Exception], tp.Tuple[tp.Type[Exception], ...]],
     max_attempts: int,
-    interval: int
+    interval: int,
 ) -> T:
     for attempt in range(1, max_attempts + 1):
         try:

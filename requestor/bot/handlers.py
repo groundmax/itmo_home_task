@@ -23,10 +23,10 @@ from requestor.gunner import (
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
-    IncorrectContentTypeError,
 )
 from requestor.log import app_logger
 from requestor.models import ModelInfo, ProgressNotifier, TeamInfo, Trial, TrialStatus
@@ -49,7 +49,7 @@ from .constants import (
     MODEL_NOT_FOUND_MSG,
     TEAM_NOT_FOUND_MSG,
 )
-from .exceptions import InvalidURLError, TooManyRequestsError, IncorrectValueError
+from .exceptions import IncorrectValueError, InvalidURLError, TooManyRequestsError
 
 DELAY: tp.Final = config.telegram_config.delay_between_messages
 PRECISION: tp.Final = config.telegram_config.metric_by_assessor_display_precision
@@ -98,7 +98,7 @@ async def handle(handler, app: App, message: types.Message) -> None:
         app_logger.warning(e)
         await asyncio.sleep(e.timeout)
         await handler(message, app)
-    except Exception:
+    except Exception:  # pylint: disable=(broad-except
         app_logger.error(traceback.format_exc())
         await message.reply("Что-то пошло не так. Попробуйте позже")
     app_logger.info(f"Msg {msg_desc} handled")

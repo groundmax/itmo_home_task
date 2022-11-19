@@ -9,7 +9,7 @@ from requestor.models import Model, TeamInfo, TrialStatus
 from requestor.settings import TrialLimit
 
 from .constants import DATETIME_FORMAT
-from .exceptions import InvalidURLError, IncorrectValueError
+from .exceptions import IncorrectValueError, InvalidURLError
 
 
 def is_url_valid(url: str) -> bool:
@@ -53,9 +53,7 @@ def parse_msg_with_team_info(
         return None, None
     except ValidationError as e:
         err = e.errors()[0]
-        raise IncorrectValueError(
-            f"Недопустимое значение {err['loc'][0]}: {err['msg']}"
-        )
+        raise IncorrectValueError(f"Недопустимое значение {err['loc'][0]}: {err['msg']}")
 
 
 def parse_msg_with_model_info(

@@ -1,4 +1,4 @@
 from .bot import create_bot
-from .exceptions import InvalidURLError, IncorrectValueError
+from .exceptions import IncorrectValueError, InvalidURLError
 
 __all__ = ("create_bot", "InvalidURLError", "IncorrectValueError")

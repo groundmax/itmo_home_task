@@ -3,10 +3,10 @@ from .exceptions import (
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
-    IncorrectContentTypeError,
 )
 from .service import GunnerService, UserRecoResponse
 

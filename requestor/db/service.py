@@ -2,8 +2,12 @@ import functools
 import typing as tp
 from uuid import UUID
 
-from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError, \
-    ConnectionDoesNotExistError
+from asyncpg import (
+    ConnectionDoesNotExistError,
+    ForeignKeyViolationError,
+    Pool,
+    UniqueViolationError,
+)
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
@@ -17,8 +21,9 @@ from requestor.models import (
     Trial,
     TrialStatus,
 )
-from requestor.utils import utc_now, async_do_with_retries
+from requestor.utils import async_do_with_retries, utc_now
 
+from ..settings import config
 from .exceptions import (
     DuplicatedMetricError,
     DuplicatedModelError,
@@ -28,10 +33,9 @@ from .exceptions import (
     TokenNotFoundError,
     TrialNotFoundError,
 )
-from ..settings import config
 
 
-def attempted(func: tp.Coroutine) -> tp.Any:
+def attempted(func: tp.Callable) -> tp.Callable:
     @functools.wraps(func)
     async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> tp.Any:
         res = await async_do_with_retries(

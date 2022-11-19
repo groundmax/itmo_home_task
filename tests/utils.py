@@ -234,7 +234,8 @@ def gen_response_based_on_type(
     user_id: int,
     reco_size: int,
     response_type: ResponseTypes,
-) -> tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]]:
+) -> tp.Union[tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]], str]:
+    response: tp.Union[tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]], str]
     if response_type == ResponseTypes.ok:
         response = gen_json_reco_response(user_id, reco_size)
     elif response_type == ResponseTypes.contains_null:

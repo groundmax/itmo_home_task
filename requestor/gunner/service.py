@@ -10,17 +10,17 @@ from pydantic.main import BaseModel
 from requestor.models import ProgressNotifier
 from requestor.settings import config
 
+from ..log import app_logger
 from .exceptions import (
     DuplicatedRecommendationsError,
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
-    IncorrectContentTypeError,
 )
-from ..log import app_logger
 
 START_RANK_FROM: tp.Final = 1
 NOT_REQUESTED_STATUS: tp.Final = -999
@@ -80,7 +80,7 @@ class GunnerService(BaseModel):
 
             try:
                 resp = await response.json()
-            except ContentTypeError as e:
+            except ContentTypeError:
                 text = await response.text()
                 app_logger.warning(f"ContentTypeError. text: {text}")
                 max_length = config.gunner_config.length_to_cut_when_incorrect_content_type
