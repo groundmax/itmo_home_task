@@ -334,11 +334,9 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
-        app_logger.warning(traceback.format_exc())
     except (ClientOSError, ServerDisconnectedError) as e:
         reply, status = f"Возникла ошибка при обращении к сервису: {e!r}", TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
-        app_logger.warning(traceback.format_exc())
     except Exception as e:  # pylint: disable=broad-except
         reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
         app_logger.error(f"Unhandled error: {e!r}")
