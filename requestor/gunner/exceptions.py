@@ -24,3 +24,7 @@ class HugeResponseSizeError(Exception):
 
 class RequestLimitByUserError(Exception):
     pass
+
+
+class IncorrectContentTypeError(Exception):
+    pass
