@@ -10,6 +10,7 @@ from pydantic.main import BaseModel
 from requestor.models import ProgressNotifier
 from requestor.settings import config
 
+from ..log import app_logger
 from .exceptions import (
     DuplicatedRecommendationsError,
     HTTPAuthorizationError,
@@ -19,7 +20,6 @@ from .exceptions import (
     RequestLimitByUserError,
     RequestTimeoutError,
 )
-from ..log import app_logger
 
 START_RANK_FROM: tp.Final = 1
 NOT_REQUESTED_STATUS: tp.Final = -999

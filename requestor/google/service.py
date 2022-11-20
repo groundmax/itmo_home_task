@@ -5,7 +5,7 @@ import gspread
 from asgiref.sync import sync_to_async
 from pydantic import BaseModel
 
-from requestor.models import GlobalLeaderboardRow
+from requestor.models import ByModelLeaderboardRow, GlobalLeaderboardRow
 
 DT_FMT = "%Y-%m-%d %H:%M:%S"
 
@@ -15,6 +15,8 @@ class GSService(BaseModel):
     url: str
     global_leaderboard_page_name: str
     global_leaderboard_page_max_rows: int
+    by_model_leaderboard_page_name: str
+    by_model_leaderboard_page_max_rows: int
 
     sheet: tp.Optional[gspread.Spreadsheet] = None
 
@@ -54,4 +56,25 @@ class GSService(BaseModel):
 
         ws = self.sheet.worksheet(self.global_leaderboard_page_name)
         ws.batch_clear([f"A2:E{self.global_leaderboard_page_max_rows}"])
+        ws.update(f"A2:E{len(rows) + 1}", values, raw=False)
+
+    async def update_by_model_leaderboard(self, rows: tp.List[ByModelLeaderboardRow]) -> None:
+        return await sync_to_async(self._update_by_model_leaderboard)(rows)
+
+    def _update_by_model_leaderboard(self, rows: tp.List[ByModelLeaderboardRow]) -> None:
+        self._check_setup()
+
+        values = [
+            [
+                row.team_name,
+                row.model_name,
+                row.best_score,
+                row.n_attempts,
+                row.last_attempt.strftime(DT_FMT),
+            ]
+            for row in rows
+        ]
+
+        ws = self.sheet.worksheet(self.by_model_leaderboard_page_name)
+        ws.batch_clear([f"A2:E{self.by_model_leaderboard_page_max_rows}"])
         ws.update(f"A2:E{len(rows) + 1}", values, raw=False)

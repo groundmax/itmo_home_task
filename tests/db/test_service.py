@@ -17,7 +17,14 @@ from requestor.db.exceptions import (
 )
 from requestor.db.models import MetricsTable, ModelsTable, TeamsTable, TokensTable, TrialsTable
 from requestor.db.service import DBService
-from requestor.models import GlobalLeaderboardRow, Metric, ModelInfo, TeamInfo, TrialStatus
+from requestor.models import (
+    ByModelLeaderboardRow,
+    GlobalLeaderboardRow,
+    Metric,
+    ModelInfo,
+    TeamInfo,
+    TrialStatus,
+)
 from requestor.utils import utc_now
 from tests.utils import (
     OTHER_TEAM_INFO,
@@ -468,12 +475,14 @@ class TestLeaderboard:
             data[i]["models"] = {}
             for j in (1, 2):
                 t_id = data[i]["id"]
-                m_id = add_model(gen_model_info(t_id, rnd=j), create_db_object)
-                data[i]["models"][j] = {"id": m_id}
+                m_info = gen_model_info(t_id, rnd=j)
+                m_id = add_model(m_info, create_db_object)
+                data[i]["models"][j] = {"id": m_id, "name": m_info.name}
         for i in (3, 4, 5):
             t_id = data[i]["id"]
-            m_id = add_model(gen_model_info(t_id, rnd=1), create_db_object)
-            data[i]["models"] = {1: {"id": m_id}}
+            m_info = gen_model_info(t_id, rnd=1)
+            m_id = add_model(m_info, create_db_object)
+            data[i]["models"] = {1: {"id": m_id, "name": m_info.name}}
 
         # Add trials
         for i in (1, 2, 3, 4):
@@ -569,3 +578,38 @@ class TestLeaderboard:
         ]
 
         assert actual[: len(expected)] == expected
+
+    async def test_by_model_leaderboard(
+        self,
+        db_service: DBService,
+        create_db_object: DBObjectCreator,
+    ) -> None:
+        data = self._add_data(create_db_object)
+
+        actual = await db_service.get_by_model_leaderboard("metric_1")
+
+        expected = [
+            ByModelLeaderboardRow(
+                team_name=data[1]["description"],
+                model_name=data[1]["models"][1]["name"],
+                best_score=20,
+                n_attempts=2,
+                last_attempt=self.now_1,
+            ),
+            ByModelLeaderboardRow(
+                team_name=data[1]["description"],
+                model_name=data[1]["models"][2]["name"],
+                best_score=30,
+                n_attempts=1,
+                last_attempt=self.now_2,
+            ),
+            ByModelLeaderboardRow(
+                team_name=data[2]["description"],
+                model_name=data[2]["models"][1]["name"],
+                best_score=50,
+                n_attempts=1,
+                last_attempt=self.now_2,
+            ),
+        ]
+
+        assert actual == expected

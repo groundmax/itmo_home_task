@@ -6,6 +6,7 @@ from pydantic.main import BaseModel
 
 from requestor.log import app_logger
 from requestor.models import (
+    ByModelLeaderboardRow,
     GlobalLeaderboardRow,
     Metric,
     Model,
@@ -330,3 +331,22 @@ class DBService(BaseModel):
         """
         records = await self.pool.fetch(query, metric)
         return [GlobalLeaderboardRow(**record) for record in records]
+
+    async def get_by_model_leaderboard(self, metric: str) -> tp.List[ByModelLeaderboardRow]:
+        query = """
+            SELECT
+                t.description AS team_name
+                , m.name AS model_name
+                , MAX(me.value) AS best_score
+                , COUNT(*) AS n_attempts
+                , MAX(tr.created_at) AS last_attempt
+            FROM teams t
+                JOIN models m on t.team_id = m.team_id
+                JOIN trials tr on m.model_id = tr.model_id
+                JOIN metrics me on tr.trial_id = me.trial_id
+            WHERE tr.status = 'success' AND me.name = $1::VARCHAR
+            GROUP BY t.description, m.name
+            ORDER BY t.description, m.name
+        """
+        records = await self.pool.fetch(query, metric)
+        return [ByModelLeaderboardRow(**record) for record in records]
