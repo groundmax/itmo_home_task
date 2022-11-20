@@ -319,14 +319,14 @@ class DBService(BaseModel):
                 GROUP BY m.team_id
             )
             SELECT
-                t.title AS team_name
+                t.description AS team_name
                 , best_score
                 , COALESCE(n_attempts, 0) AS n_attempts
                 , last_attempt
             FROM teams t
                 LEFT JOIN trials_stat ts on t.team_id = ts.team_id
                 LEFT JOIN best_metrics bm on t.team_id = bm.team_id
-            ORDER BY best_score DESC NULLS LAST, last_attempt ASC NULLS LAST, t.title ASC
+            ORDER BY best_score DESC NULLS LAST, last_attempt ASC NULLS LAST, t.description ASC
         """
         records = await self.pool.fetch(query, metric)
         return [GlobalLeaderboardRow(**record) for record in records]

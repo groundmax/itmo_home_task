@@ -459,8 +459,9 @@ class TestLeaderboard:
         # Add teams
         for i in range(1, 7):
             t_info = gen_team_info(i)
-            t_id = add_team(t_info, create_db_object)
-            data[i] = {"id": t_id, "title": t_info.title}
+            t_desc = f"desc_{t_info.title}"
+            t_id = add_team(t_info, create_db_object, description=t_desc)
+            data[i] = {"id": t_id, "description": t_desc}
 
         # Add models
         for i in (1, 2):
@@ -530,37 +531,37 @@ class TestLeaderboard:
 
         expected = [
             GlobalLeaderboardRow(
-                team_name=data[2]["title"],
+                team_name=data[2]["description"],
                 best_score=50,
                 n_attempts=2,
                 last_attempt=self.now,
             ),
             GlobalLeaderboardRow(
-                team_name=data[1]["title"],
+                team_name=data[1]["description"],
                 best_score=30,
                 n_attempts=3,
                 last_attempt=self.now_1,
             ),
             GlobalLeaderboardRow(
-                team_name=data[3]["title"],
+                team_name=data[3]["description"],
                 best_score=None,
                 n_attempts=1,
                 last_attempt=self.now_2,
             ),
             GlobalLeaderboardRow(
-                team_name=data[4]["title"],
+                team_name=data[4]["description"],
                 best_score=None,
                 n_attempts=0,
                 last_attempt=None,
             ),
             GlobalLeaderboardRow(
-                team_name=data[5]["title"],
+                team_name=data[5]["description"],
                 best_score=None,
                 n_attempts=0,
                 last_attempt=None,
             ),
             GlobalLeaderboardRow(
-                team_name=data[6]["title"],
+                team_name=data[6]["description"],
                 best_score=None,
                 n_attempts=0,
                 last_attempt=None,
