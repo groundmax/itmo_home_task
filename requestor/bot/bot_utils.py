@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
+from pydantic import ValidationError
 
 from requestor.db import DBService
 from requestor.google import GSService
@@ -11,7 +12,7 @@ from requestor.models import Model, TeamInfo, TrialStatus
 from requestor.settings import TrialLimit
 
 from .constants import DATETIME_FORMAT
-from .exceptions import InvalidURLError
+from .exceptions import IncorrectValueError, InvalidURLError
 
 
 def is_url_valid(url: str) -> bool:
@@ -53,6 +54,9 @@ def parse_msg_with_team_info(
         )
     except NameError:
         return None, None
+    except ValidationError as e:
+        err = e.errors()[0]
+        raise IncorrectValueError(f"Недопустимое значение {err['loc'][0]}: {err['msg']}")
 
 
 def parse_msg_with_model_info(

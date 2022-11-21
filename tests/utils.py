@@ -228,13 +228,15 @@ class ResponseTypes(Enum):
     incorrect_reco_size = "incorrect_reco_size"
     incorrect_model_response = "incorrect_model_response"
     huge_bytes_size = "huge_bytes_size"
+    incorrect_content_type = "incorrect_content_type"
 
 
 def gen_response_based_on_type(
     user_id: int,
     reco_size: int,
     response_type: ResponseTypes,
-) -> tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]]:
+) -> tp.Union[tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]], str]:
+    response: tp.Union[tp.Dict[str, tp.Union[int, tp.List[tp.Optional[int]]]], str]
     if response_type == ResponseTypes.ok:
         response = gen_json_reco_response(user_id, reco_size)
     elif response_type == ResponseTypes.contains_null:
@@ -247,6 +249,8 @@ def gen_response_based_on_type(
         response = {"items": list(range(reco_size))}
     elif response_type == ResponseTypes.huge_bytes_size:
         response = gen_json_reco_response(user_id, 10**6)
+    elif response_type == ResponseTypes.incorrect_content_type:
+        response = "Some text response"
     else:
         raise ValueError("There is no such response type")
 
@@ -267,4 +271,8 @@ def prepare_http_responses(
                 response = gen_response_based_on_type(user_id, reco_size, response_type)
             else:
                 response = gen_json_reco_response(user_id, reco_size)
-            httpserver.expect_request(f"/reco/model_name/{user_id}").respond_with_json(response)
+            handler = httpserver.expect_request(f"/reco/model_name/{user_id}")
+            if isinstance(response, dict):
+                handler.respond_with_json(response)
+            else:
+                handler.respond_with_data(response)

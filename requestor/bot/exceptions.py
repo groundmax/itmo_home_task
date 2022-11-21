@@ -4,3 +4,7 @@ class InvalidURLError(Exception):
 
 class TooManyRequestsError(Exception):
     """Raised when chat requests bot too much"""
+
+
+class IncorrectValueError(Exception):
+    """Raised when given value not matches the requirements"""

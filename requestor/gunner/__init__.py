@@ -3,6 +3,7 @@ from .exceptions import (
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
@@ -19,4 +20,5 @@ __all__ = (
     "HTTPAuthorizationError",
     "HTTPResponseNotOKError",
     "RequestTimeoutError",
+    "IncorrectContentTypeError",
 )

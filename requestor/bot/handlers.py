@@ -8,7 +8,8 @@ from aiogram import Dispatcher, types
 from aiogram.types import ParseMode
 from aiogram.utils.exceptions import RetryAfter
 from aiogram.utils.markdown import bold, escape_md, text
-from aiohttp import ContentTypeError
+from aiohttp import ClientOSError, ServerDisconnectedError
+from pydantic import ValidationError
 
 from requestor.db import (
     DuplicatedModelError,
@@ -22,6 +23,7 @@ from requestor.gunner import (
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
@@ -48,7 +50,7 @@ from .constants import (
     MODEL_NOT_FOUND_MSG,
     TEAM_NOT_FOUND_MSG,
 )
-from .exceptions import InvalidURLError, TooManyRequestsError
+from .exceptions import IncorrectValueError, InvalidURLError, TooManyRequestsError
 
 DELAY: tp.Final = config.telegram_config.delay_between_messages
 PRECISION: tp.Final = config.telegram_config.metric_by_assessor_display_precision
@@ -97,9 +99,9 @@ async def handle(handler, app: App, message: types.Message) -> None:
         app_logger.warning(e)
         await asyncio.sleep(e.timeout)
         await handler(message, app)
-    except Exception:
+    except Exception:  # pylint: disable=(broad-except
         app_logger.error(traceback.format_exc())
-        raise
+        await message.reply("Что-то пошло не так. Попробуйте позже")
     app_logger.info(f"Msg {msg_desc} handled")
 
 
@@ -120,7 +122,7 @@ async def help_h(event: types.Message, app: App) -> None:
 async def register_team_h(message: types.Message, app: App) -> None:
     try:
         token, team_info = parse_msg_with_team_info(message)
-    except InvalidURLError as e:
+    except (InvalidURLError, IncorrectValueError) as e:
         return await message.reply(e)
 
     if team_info is None:
@@ -184,9 +186,14 @@ async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
         if update_value.endswith("/"):
             update_value = update_value[:-1]
 
-    updated_team_info = TeamInfo(**current_team_info.dict())
-
-    setattr(updated_team_info, update_field, update_value)
+    updated_team_info_dict = current_team_info.dict()
+    updated_team_info_dict[update_field] = update_value
+    try:
+        updated_team_info = TeamInfo(**updated_team_info_dict)
+    except ValidationError as e:
+        err = e.errors()[0]
+        reply = f"Задано недопустимое значение: {err['msg']}"
+        return await message.reply(reply)
 
     try:
         await app.db_service.update_team(current_team_info.team_id, updated_team_info)
@@ -236,9 +243,14 @@ async def add_model_h(message: types.Message, app: App) -> None:
         return await message.reply(TEAM_NOT_FOUND_MSG)
 
     try:
-        await app.db_service.add_model(
-            ModelInfo(team_id=team.team_id, name=name, description=description)
-        )
+        model_info = ModelInfo(team_id=team.team_id, name=name, description=description)
+    except ValidationError as e:
+        err = e.errors()[0]
+        reply = f"Недопустимое значение {err['loc'][0]}: {err['msg']}"
+        return await message.reply(reply)
+
+    try:
+        await app.db_service.add_model(model_info)
         reply = f"Модель `{name}` успешно добавлена."
     except DuplicatedModelError:
         reply = text(
@@ -319,14 +331,13 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
         HTTPAuthorizationError,
         HTTPResponseNotOKError,
         RequestTimeoutError,
+        IncorrectContentTypeError,
     ) as e:
         reply, status = e.args[0], TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
-    except ContentTypeError as e:
-        reply, status = str(e.args[0]), TrialStatus.failed
-        reply += "\n" + e.custom__response_text
+    except (ClientOSError, ServerDisconnectedError) as e:
+        reply, status = f"Возникла ошибка при обращении к сервису: {e!r}", TrialStatus.failed
         app_logger.warning(f"Handled error: {e!r}")
-
     except Exception as e:  # pylint: disable=broad-except
         reply, status = "Что-то пошло не по плану, попробуйте позже.", TrialStatus.failed
         app_logger.error(f"Unhandled error: {e!r}")

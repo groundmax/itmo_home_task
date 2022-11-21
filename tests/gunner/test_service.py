@@ -17,6 +17,7 @@ from requestor.gunner import (
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
 )
+from requestor.gunner.exceptions import IncorrectContentTypeError
 from requestor.settings import ServiceConfig
 from tests.utils import (
     ResponseTypes,
@@ -378,3 +379,25 @@ class TestGunnerNoAuth:
         )
 
         spy.assert_called_once_with("Progress: 0.00%")
+
+    async def test_get_recos_incorrect_response_type(
+        self,
+        httpserver: HTTPServer,
+        service_config: ServiceConfig,
+        users_batches: tp.List[tp.List[int]],
+        gunner_service: GunnerService,
+    ) -> None:
+        reco_size = service_config.assessor_config.reco_size
+
+        prepare_http_responses(
+            httpserver,
+            users_batches,
+            reco_size,
+            ResponseTypes.incorrect_content_type,
+        )
+
+        with pytest.raises(IncorrectContentTypeError):
+            await gunner_service.get_recos(
+                httpserver.url_for("/"),
+                "model_name",
+            )

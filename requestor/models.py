@@ -6,7 +6,7 @@ from uuid import UUID
 
 from aiogram import types
 from aiogram.utils.exceptions import RetryAfter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class TokenInfo(BaseModel):
@@ -15,10 +15,10 @@ class TokenInfo(BaseModel):
 
 
 class TeamInfo(BaseModel):
-    title: str
+    title: str = Field(max_length=128)
     chat_id: int
-    api_base_url: str
-    api_key: tp.Optional[str]
+    api_base_url: str = Field(max_length=256)
+    api_key: tp.Optional[str] = Field(max_length=128)
 
 
 class Team(TeamInfo):
@@ -30,8 +30,8 @@ class Team(TeamInfo):
 
 class ModelInfo(BaseModel):
     team_id: UUID
-    name: str
-    description: tp.Optional[str]
+    name: str = Field(max_length=64)
+    description: tp.Optional[str] = Field(max_length=256)
 
 
 class Model(ModelInfo):

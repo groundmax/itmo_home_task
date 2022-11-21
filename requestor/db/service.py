@@ -1,7 +1,13 @@
+import functools
 import typing as tp
 from uuid import UUID
 
-from asyncpg import ForeignKeyViolationError, Pool, UniqueViolationError
+from asyncpg import (
+    ConnectionDoesNotExistError,
+    ForeignKeyViolationError,
+    Pool,
+    UniqueViolationError,
+)
 from pydantic.main import BaseModel
 
 from requestor.log import app_logger
@@ -16,8 +22,9 @@ from requestor.models import (
     Trial,
     TrialStatus,
 )
-from requestor.utils import utc_now
+from requestor.utils import async_do_with_retries, utc_now
 
+from ..settings import config
 from .exceptions import (
     DuplicatedMetricError,
     DuplicatedModelError,
@@ -27,6 +34,20 @@ from .exceptions import (
     TokenNotFoundError,
     TrialNotFoundError,
 )
+
+
+def attempted(func: tp.Callable) -> tp.Callable:
+    @functools.wraps(func)
+    async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> tp.Any:
+        res = await async_do_with_retries(
+            func=func(*args, **kwargs),
+            exc_type=(ConnectionRefusedError, ConnectionDoesNotExistError),
+            max_attempts=config.db_config.n_attempts,
+            interval=config.db_config.attempts_interval,
+        )
+        return res
+
+    return _wrapper
 
 
 class DBService(BaseModel):
@@ -110,6 +131,7 @@ class DBService(BaseModel):
         except UniqueViolationError as e:
             raise DuplicatedTeamError(e)
 
+    @attempted
     async def update_team(self, team_id: UUID, team_info: TeamInfo) -> Team:
         query = """
             UPDATE teams
@@ -147,6 +169,7 @@ class DBService(BaseModel):
             raise TeamNotFoundError(f"Team '{team_id}' not found")
         return Team(**record)
 
+    @attempted
     async def get_team_by_chat(self, chat_id: int) -> Team:
         query = """
             SELECT *
@@ -159,6 +182,7 @@ class DBService(BaseModel):
             raise TeamNotFoundError()
         return Team(**record)
 
+    @attempted
     async def add_model(self, model_info: ModelInfo) -> Model:
         query = """
             INSERT INTO models
@@ -191,6 +215,7 @@ class DBService(BaseModel):
         except ForeignKeyViolationError:
             raise TeamNotFoundError()
 
+    @attempted
     async def get_team_last_n_models(self, team_id: UUID, limit: int) -> tp.List[Model]:
         if limit <= 0:
             raise ValueError(f"Parameter 'limit' should be positive, but got: {limit}")
@@ -204,6 +229,7 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id, limit)
         return [Model(**record) for record in records]
 
+    @attempted
     async def get_model_by_name(self, team_id: UUID, model_name: str) -> Model:
         query = """
             SELECT *
@@ -216,6 +242,7 @@ class DBService(BaseModel):
 
         return Model(**record)
 
+    @attempted
     async def add_trial(self, model_id: UUID, status: TrialStatus) -> Trial:
         if status.is_finished:
             raise ValueError("New trial cannot be finished")
@@ -247,6 +274,7 @@ class DBService(BaseModel):
             raise ModelNotFoundError(f"Model {model_id} not found")
         return Trial(**record)
 
+    @attempted
     async def update_trial_status(self, trial_id: UUID, status: TrialStatus) -> Trial:
         query = """
             UPDATE trials
@@ -272,6 +300,7 @@ class DBService(BaseModel):
             raise TrialNotFoundError(f"Trial '{trial_id}' not found")
         return Trial(**record)
 
+    @attempted
     async def get_team_today_trial_stat(self, team_id: UUID) -> tp.Dict[TrialStatus, int]:
         query = """
             SELECT status, count(*) AS n_trials
@@ -283,6 +312,7 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, team_id, utc_now().date())
         return {r["status"]: r["n_trials"] for r in records}
 
+    @attempted
     async def add_metrics(self, trial_id: UUID, metrics: tp.Iterable[Metric]) -> None:
         query = """
             INSERT INTO metrics
@@ -302,6 +332,7 @@ class DBService(BaseModel):
         except ForeignKeyViolationError:
             raise TrialNotFoundError()
 
+    @attempted
     async def get_global_leaderboard(self, metric: str) -> tp.List[GlobalLeaderboardRow]:
         query = """
             WITH trials_stat AS (

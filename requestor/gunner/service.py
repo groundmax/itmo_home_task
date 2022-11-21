@@ -16,6 +16,7 @@ from .exceptions import (
     HTTPAuthorizationError,
     HTTPResponseNotOKError,
     HugeResponseSizeError,
+    IncorrectContentTypeError,
     RecommendationsLimitSizeError,
     RequestLimitByUserError,
     RequestTimeoutError,
@@ -25,6 +26,7 @@ START_RANK_FROM: tp.Final = 1
 NOT_REQUESTED_STATUS: tp.Final = -999
 UPDATE_PERIOD: tp.Final = config.gunner_config.progress_update_period
 TIMEOUT: tp.Final = ClientTimeout(total=config.gunner_config.timeout)
+MAX_RESPONSE_TEXT_LENGTH = config.gunner_config.length_to_cut_when_incorrect_content_type
 
 RecommendationRow = tp.Tuple[int, int, int]
 UserResponseInfo = tp.Tuple[int, tp.Dict[str, tp.Any], int]
@@ -79,11 +81,12 @@ class GunnerService(BaseModel):
 
             try:
                 resp = await response.json()
-            except ContentTypeError as e:
+            except ContentTypeError:
                 text = await response.text()
                 app_logger.warning(f"ContentTypeError. text: {text}")
-                e.custom__response_text = str(text[:10000])
-                raise e
+                if len(text) > MAX_RESPONSE_TEXT_LENGTH:
+                    text = f"{text[:MAX_RESPONSE_TEXT_LENGTH]}..."
+                raise IncorrectContentTypeError(f"Got non-JSON response: {text}")
 
             return user_id, resp, response.status
 
