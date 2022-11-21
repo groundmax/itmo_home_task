@@ -50,7 +50,7 @@ def run_app():
     bot, dp = create_bot(app)
 
     app_logger.info("Updating leaderboard...")
-    async_to_sync(
+    async_to_sync(  # type: ignore[no-untyped-call]
         update_leaderboards(
             app.db_service, app.gs_service, config.assessor_config.main_metric_name
         )

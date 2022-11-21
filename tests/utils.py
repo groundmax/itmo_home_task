@@ -148,7 +148,7 @@ def add_token(
 def add_team(
     team_info: TeamInfo,
     create_db_object: DBObjectCreator,
-    description: tp.Optional[str],
+    description: tp.Optional[str] = None,
 ) -> UUID:
     team_id = uuid4()
     create_db_object(make_db_team(**team_info.dict(), team_id=team_id, description=description))
