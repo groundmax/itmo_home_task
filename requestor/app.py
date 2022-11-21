@@ -2,12 +2,10 @@ import asyncio
 
 from aiogram import Bot, Dispatcher
 from aiogram.utils.executor import start_webhook
-from asgiref.sync import async_to_sync
 from sqlalchemy.exc import OperationalError
 
 from migrations.utils import upgrade_db
 from requestor.bot import create_bot
-from requestor.bot.bot_utils import update_leaderboards
 from requestor.bot.events import make_on_shutdown_handler, make_on_startup_handler
 from requestor.log import app_logger, setup_logging
 from requestor.services import App
@@ -48,13 +46,6 @@ def run_app():
 
     app = App.from_config(config)
     bot, dp = create_bot(app)
-
-    app_logger.info("Updating leaderboard...")
-    async_to_sync(  # type: ignore[no-untyped-call]
-        update_leaderboards(
-            app.db_service, app.gs_service, config.assessor_config.main_metric_name
-        )
-    )
 
     app_logger.info("Starting app...")
     if config.env == Env.PRODUCTION:
