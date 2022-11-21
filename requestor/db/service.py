@@ -363,6 +363,7 @@ class DBService(BaseModel):
         records = await self.pool.fetch(query, metric)
         return [GlobalLeaderboardRow(**record) for record in records]
 
+    @attempted
     async def get_by_model_leaderboard(self, metric: str) -> tp.List[ByModelLeaderboardRow]:
         query = """
             SELECT
