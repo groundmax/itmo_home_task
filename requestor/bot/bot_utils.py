@@ -5,10 +5,10 @@ from urllib.parse import urlsplit
 from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
 
-from requestor.models import Model, TeamInfo, TrialStatus
-from requestor.settings import TrialLimit
 from requestor.db import DBService
 from requestor.google import GSService
+from requestor.models import Model, TeamInfo, TrialStatus
+from requestor.settings import TrialLimit
 
 from .constants import DATETIME_FORMAT
 from .exceptions import InvalidURLError
@@ -126,7 +126,6 @@ def generate_models_description(models: tp.List[Model]) -> str:
 
 
 async def update_leaderboards(db_service: DBService, gs_service: GSService, metric: str) -> None:
-
     async def update_global() -> None:
         rows = await db_service.get_global_leaderboard(metric)
         await gs_service.update_global_leaderboard(rows)
