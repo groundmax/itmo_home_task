@@ -62,6 +62,8 @@ class GSConfig(Config):
     url: str
     global_leaderboard_page_name: str
     global_leaderboard_page_max_rows: int
+    by_model_leaderboard_page_name: str
+    by_model_leaderboard_page_max_rows: int
 
     class Config:
         case_sensitive = False

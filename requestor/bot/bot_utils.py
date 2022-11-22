@@ -1,3 +1,4 @@
+import asyncio
 import typing as tp
 from urllib.parse import urlsplit
 
@@ -5,6 +6,8 @@ from aiogram import types
 from aiogram.utils.markdown import bold, escape_md, text
 from pydantic import ValidationError
 
+from requestor.db import DBService
+from requestor.google import GSService
 from requestor.models import Model, TeamInfo, TrialStatus
 from requestor.settings import TrialLimit
 
@@ -124,3 +127,15 @@ def generate_models_description(models: tp.List[Model]) -> str:
 
     reply = "\n\n".join(model_descriptions)
     return reply
+
+
+async def update_leaderboards(db_service: DBService, gs_service: GSService, metric: str) -> None:
+    async def update_global() -> None:
+        rows = await db_service.get_global_leaderboard(metric)
+        await gs_service.update_global_leaderboard(rows)
+
+    async def update_by_model() -> None:
+        rows = await db_service.get_by_model_leaderboard(metric)
+        await gs_service.update_by_model_leaderboard(rows)
+
+    await asyncio.gather(update_global(), update_by_model())

@@ -39,6 +39,7 @@ from .bot_utils import (
     parse_msg_with_model_info,
     parse_msg_with_request_info,
     parse_msg_with_team_info,
+    update_leaderboards,
     url_validator,
     validate_today_trial_stats,
 )
@@ -362,8 +363,9 @@ async def request_h(  # pylint: disable=too-many-branches # noqa: C901
 
     await app.db_service.add_metrics(trial_id=trial.trial_id, metrics=metrics_data)
 
-    rows = await app.db_service.get_global_leaderboard(config.assessor_config.main_metric_name)
-    await app.gs_service.update_global_leaderboard(rows)
+    await update_leaderboards(
+        app.db_service, app.gs_service, config.assessor_config.main_metric_name
+    )
     await asyncio.sleep(DELAY)
     await notifier.reply("Лидерборд обновлен, можете смотреть результаты.")
 

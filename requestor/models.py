@@ -70,6 +70,14 @@ class GlobalLeaderboardRow(BaseModel):
     last_attempt: tp.Optional[datetime]
 
 
+class ByModelLeaderboardRow(BaseModel):
+    team_name: str
+    model_name: str
+    best_score: float
+    n_attempts: int
+    last_attempt: datetime
+
+
 class ProgressNotifier(BaseModel):
     message: types.Message
 

@@ -47,6 +47,7 @@ def run_app():
     app = App.from_config(config)
     bot, dp = create_bot(app)
 
+    app_logger.info("Starting app...")
     if config.env == Env.PRODUCTION:
         run_with_webhook(bot, dp, app)
     else:
