@@ -279,7 +279,7 @@ async def show_models_h(message: types.Message, app: App) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def request_h(  # pylint: disable=too-many-branches # noqa: C901
+async def request_h(  # pylint: disable=too-many-branches, too-many-locals; noqa: C901
     message: types.Message, app: App
 ) -> None:
     try:

@@ -453,7 +453,7 @@ class TestLeaderboard:
         self.now_3 = self.now - timedelta(hours=3)
 
     @tp.no_type_check
-    def _add_data(self, create_db_object: DBObjectCreator) -> tp.Dict:
+    def _add_data(self, create_db_object: DBObjectCreator) -> tp.Dict:  # pylint: disable=too-many-locals
         # 1 - team with 2 models, both have trials
         # 2 - team with 2 models, only 1st has trials
         # 3 - team with model with successful trial, but without metrics

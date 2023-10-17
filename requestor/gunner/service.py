@@ -4,8 +4,7 @@ from asyncio import Task
 from http import HTTPStatus
 
 from aiohttp import ClientSession, ClientTimeout, ContentTypeError
-from pydantic import validator
-from pydantic.main import BaseModel
+from pydantic import BaseModel, validator  # pylint: disable=no-name-in-module
 
 from requestor.models import ProgressNotifier
 from requestor.settings import config

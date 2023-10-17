@@ -6,7 +6,7 @@ from uuid import UUID
 
 from aiogram import types
 from aiogram.utils.exceptions import RetryAfter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 
 
 class TokenInfo(BaseModel):

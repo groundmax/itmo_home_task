@@ -4,7 +4,7 @@ from enum import Enum
 from uuid import UUID, uuid4
 
 import gspread
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from pytest_httpserver import HTTPServer
 
 from requestor.db.models import (
