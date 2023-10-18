@@ -15,7 +15,6 @@ class TokenInfo(BaseModel):
 
 
 class TeamInfo(BaseModel):
-    title: str = Field(max_length=128)
     chat_id: int
     api_base_url: str = Field(max_length=256)
     api_key: tp.Optional[str] = Field(max_length=128)
