@@ -8,7 +8,7 @@ from asyncpg import (
     Pool,
     UniqueViolationError,
 )
-from pydantic.main import BaseModel
+from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 from requestor.log import app_logger
 from requestor.models import (
@@ -35,11 +35,13 @@ from .exceptions import (
     TrialNotFoundError,
 )
 
+T = tp.TypeVar("T")
 
-def attempted(func: tp.Callable) -> tp.Callable:
+
+def attempted(func: tp.Callable[..., tp.Awaitable[T]]) -> tp.Callable[..., tp.Awaitable[T]]:
     @functools.wraps(func)
-    async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> tp.Any:
-        res = await async_do_with_retries(
+    async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> T:
+        res: T = await async_do_with_retries(
             func=func(*args, **kwargs),
             exc_type=(ConnectionRefusedError, ConnectionDoesNotExistError),
             max_attempts=config.db_config.n_attempts,
@@ -94,21 +96,19 @@ class DBService(BaseModel):
         description = await self._get_team_description_by_token(token)
         query = """
             INSERT INTO teams
-                (description, title, chat_id, api_base_url, api_key, created_at, updated_at)
+                (description, chat_id, api_base_url, api_key, created_at, updated_at)
             VALUES
                 (
                     $1::VARCHAR
-                    , $2::VARCHAR
-                    , $3::BIGINT
+                    , $2::BIGINT
+                    , $3::VARCHAR
                     , $4::VARCHAR
-                    , $5::VARCHAR
+                    , $5::TIMESTAMP
                     , $6::TIMESTAMP
-                    , $7::TIMESTAMP
                 )
             RETURNING
                 team_id
                 , description
-                , title
                 , chat_id
                 , api_base_url
                 , api_key
@@ -119,7 +119,6 @@ class DBService(BaseModel):
             record = await self.pool.fetchrow(
                 query,
                 description,
-                team_info.title,
                 team_info.chat_id,
                 team_info.api_base_url,
                 team_info.api_key,
@@ -136,16 +135,14 @@ class DBService(BaseModel):
         query = """
             UPDATE teams
             SET
-                title = $1::VARCHAR
-                , chat_id = $2::BIGINT
-                , api_base_url = $3::VARCHAR
-                , api_key = $4::VARCHAR
-                , updated_at = $5::TIMESTAMP
-            WHERE team_id = $6::UUID
+                chat_id = $1::BIGINT
+                , api_base_url = $2::VARCHAR
+                , api_key = $3::VARCHAR
+                , updated_at = $4::TIMESTAMP
+            WHERE team_id = $5::UUID
             RETURNING
                 team_id
                 , description
-                , title
                 , chat_id
                 , api_base_url
                 , api_key
@@ -155,7 +152,6 @@ class DBService(BaseModel):
         try:
             record = await self.pool.fetchrow(
                 query,
-                team_info.title,
                 team_info.chat_id,
                 team_info.api_base_url,
                 team_info.api_key,

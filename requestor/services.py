@@ -1,6 +1,6 @@
 import pandas as pd
 from asyncpg import create_pool
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from rectools import Columns
 
 from .assessor import AssessorService

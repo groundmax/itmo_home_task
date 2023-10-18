@@ -34,10 +34,10 @@ def parse_msg_with_team_info(
 ) -> tp.Tuple[tp.Optional[str], tp.Optional[TeamInfo]]:
     args = message.get_args().split()
     n_args = len(args)
-    if n_args == 4:
-        token, title, api_base_url, api_key = args
-    elif n_args == 3:
-        token, title, api_base_url = args
+    if n_args == 3:
+        token, api_base_url, api_key = args
+    elif n_args == 2:
+        token, api_base_url = args
         api_key = None
 
     try:
@@ -47,7 +47,6 @@ def parse_msg_with_team_info(
             api_base_url = api_base_url[:-1]
 
         return token, TeamInfo(
-            title=title,
             chat_id=message.chat.id,
             api_base_url=api_base_url,
             api_key=api_key,

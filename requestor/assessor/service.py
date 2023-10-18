@@ -2,7 +2,7 @@ import typing as tp
 
 import pandas as pd
 from asgiref.sync import sync_to_async
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from rectools import Columns
 from rectools.metrics import calc_metrics
 

@@ -26,7 +26,7 @@ def make_uuid() -> str:
     return str(uuid.uuid4())
 
 
-def do_with_retries(  # type: ignore[return]
+def do_with_retries(  # type: ignore[return]  # pylint: disable=inconsistent-return-statements
     func: tp.Callable[[], T],
     exc_type: tp.Type[Exception],
     max_attempts: int,

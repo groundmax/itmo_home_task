@@ -4,7 +4,7 @@ from enum import Enum
 from uuid import UUID, uuid4
 
 import gspread
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from pytest_httpserver import HTTPServer
 
 from requestor.db.models import (
@@ -29,14 +29,12 @@ TOKEN_INFO = TokenInfo(
 )
 
 TEAM_INFO = TeamInfo(
-    title="some_title",
     chat_id=12345,
     api_base_url="some_url",
     api_key="some_key",
 )
 
 OTHER_TEAM_INFO = TeamInfo(
-    title="other_title",
     chat_id=54321,
     api_base_url="other_url",
     api_key=None,
@@ -87,7 +85,6 @@ def make_db_token(
 def make_db_team(
     team_id: tp.Optional[UUID] = None,
     description: tp.Optional[str] = None,
-    title: str = "some_title",
     chat_id: int = 12345,
     api_base_url: str = "some_url",
     api_key: tp.Optional[str] = "some_key",
@@ -97,7 +94,6 @@ def make_db_team(
     return TeamsTable(
         team_id=str(team_id or uuid4()),
         description="some_description_" + str(uuid4()) if description is None else description,
-        title=title,
         chat_id=chat_id,
         api_base_url=api_base_url,
         api_key=api_key,
@@ -199,7 +195,6 @@ def gen_model_info(team_id: UUID, rnd: str = "") -> ModelInfo:
 
 def gen_team_info(rnd: int = 0) -> TeamInfo:
     return TeamInfo(
-        title=f"title_{rnd}",
         chat_id=12345 + rnd,
         api_base_url=f"url_{rnd}",
         api_key=f"key_{rnd}",

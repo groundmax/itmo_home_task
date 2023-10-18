@@ -13,7 +13,6 @@ class TeamsTable(Base):
 
     team_id = Column(pg.UUID, primary_key=True, default=make_uuid)
     description = Column(pg.VARCHAR(128), nullable=False, unique=True)
-    title = Column(pg.VARCHAR(128), nullable=False, unique=True)
     chat_id = Column(pg.BIGINT, nullable=False, unique=True, index=True)
     api_base_url = Column(pg.VARCHAR(256), nullable=False, unique=True)
     api_key = Column(pg.VARCHAR(128), nullable=True)

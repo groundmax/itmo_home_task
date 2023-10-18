@@ -73,7 +73,7 @@ class TestTeams:
 
         assert db_session.query(TokensTable).count() == 0
 
-    @pytest.mark.parametrize("column", ("title", "chat_id", "api_base_url"))
+    @pytest.mark.parametrize("column", ("chat_id", "api_base_url"))
     async def test_add_duplicated_team(
         self,
         db_service: DBService,
@@ -135,7 +135,7 @@ class TestTeams:
         db_team = db_teams[0]
         assert_db_model_equal_to_pydantic_model(db_team, updated_team)
 
-    @pytest.mark.parametrize("column", ("title", "chat_id", "api_base_url"))
+    @pytest.mark.parametrize("column", ("chat_id", "api_base_url"))
     async def test_update_team_with_duplicated_info(
         self,
         db_service: DBService,
@@ -453,7 +453,9 @@ class TestLeaderboard:
         self.now_3 = self.now - timedelta(hours=3)
 
     @tp.no_type_check
-    def _add_data(self, create_db_object: DBObjectCreator) -> tp.Dict:
+    def _add_data(  # pylint: disable=too-many-locals
+        self, create_db_object: DBObjectCreator
+    ) -> tp.Dict:  # pylint: disable=too-many-locals
         # 1 - team with 2 models, both have trials
         # 2 - team with 2 models, only 1st has trials
         # 3 - team with model with successful trial, but without metrics
@@ -466,7 +468,7 @@ class TestLeaderboard:
         # Add teams
         for i in range(1, 7):
             t_info = gen_team_info(i)
-            t_desc = f"desc_{t_info.title}"
+            t_desc = f"desc_team_{i}"
             t_id = add_team(t_info, create_db_object, description=t_desc)
             data[i] = {"id": t_id, "description": t_desc}
 

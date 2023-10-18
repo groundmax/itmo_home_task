@@ -129,8 +129,8 @@ async def register_team_h(message: types.Message, app: App) -> None:
         return await message.reply(INCORRECT_DATA_IN_MSG)
 
     try:
-        await app.db_service.add_team(team_info, token)
-        reply = f"Команда `{team_info.title}` успешно зарегистрирована!"
+        team = await app.db_service.add_team(team_info, token)
+        reply = f"Команда `{team.description}` успешно зарегистрирована!"
     except TokenNotFoundError:
         reply = text(
             "Токен не найден. Пожалуйста, проверьте написание.",
@@ -142,11 +142,6 @@ async def register_team_h(message: types.Message, app: App) -> None:
             reply = text(
                 "Вы уже регистрировали команду. Если необходимо обновить что-то,",
                 "пожалуйста, воспользуйтесь командой /update_team.",
-            )
-        elif e.column == "title":
-            reply = text(
-                f"Команда с именем `{team_info.title}` уже существует.",
-                "Пожалуйста, выберите другое имя команды.",
             )
         elif e.column == "api_base_url":
             reply = text(
@@ -217,11 +212,11 @@ async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
 
 async def show_team_h(message: types.Message, app: App) -> None:
     try:
-        team_info = await app.db_service.get_team_by_chat(message.chat.id)
-        api_key = team_info.api_key if team_info.api_key is not None else "Отсутствует"
+        team = await app.db_service.get_team_by_chat(message.chat.id)
+        api_key = team.api_key if team.api_key is not None else "Отсутствует"
         reply = text(
-            f"{bold('Команда')}: {escape_md(team_info.title)}",
-            f"{bold('Хост')}: {escape_md(team_info.api_base_url)}",
+            f"{bold('Команда')}: {escape_md(team.description)}",
+            f"{bold('Хост')}: {escape_md(team.api_base_url)}",
             f"{bold('API Токен')}: {escape_md(api_key)}",
             sep="\n",
         )
@@ -279,7 +274,7 @@ async def show_models_h(message: types.Message, app: App) -> None:
     await message.reply(reply, parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def request_h(  # pylint: disable=too-many-branches # noqa: C901
+async def request_h(  # pylint: disable=too-many-branches, too-many-locals;  # noqa: C901
     message: types.Message, app: App
 ) -> None:
     try:

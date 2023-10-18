@@ -1,7 +1,7 @@
 import typing as tp
 from enum import Enum
 
-from pydantic import BaseSettings, PostgresDsn
+from pydantic import BaseSettings, PostgresDsn  # pylint: disable=no-name-in-module
 from rectools.metrics import MAP
 from rectools.metrics.base import MetricAtK
 
