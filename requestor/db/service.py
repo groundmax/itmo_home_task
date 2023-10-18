@@ -35,11 +35,13 @@ from .exceptions import (
     TrialNotFoundError,
 )
 
+T = tp.TypeVar("T")
 
-def attempted(func: tp.Callable) -> tp.Callable:
+
+def attempted(func: tp.Callable[..., tp.Awaitable[T]]) -> tp.Callable[..., tp.Awaitable[T]]:
     @functools.wraps(func)
-    async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> tp.Any:
-        res = await async_do_with_retries(
+    async def _wrapper(*args: tp.Any, **kwargs: tp.Any) -> T:
+        res: T = await async_do_with_retries(
             func=func(*args, **kwargs),
             exc_type=(ConnectionRefusedError, ConnectionDoesNotExistError),
             max_attempts=config.db_config.n_attempts,
