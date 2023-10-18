@@ -213,7 +213,6 @@ async def update_team_h(  # noqa: C901 # pylint: disable=too-many-branches
 async def show_team_h(message: types.Message, app: App) -> None:
     try:
         team = await app.db_service.get_team_by_chat(message.chat.id)
-        team
         api_key = team.api_key if team.api_key is not None else "Отсутствует"
         reply = text(
             f"{bold('Команда')}: {escape_md(team.description)}",
